@@ -5561,16 +5561,19 @@ pi.List.Selectable = (function(_super) {
   Selectable.prototype.id = 'selectable';
 
   Selectable.prototype.initialize = function(list) {
+    var item, _i, _len, _ref;
     this.list = list;
     Selectable.__super__.initialize.apply(this, arguments);
     this.type(this.list.options.select_type || 'radio');
     this.list.on('item_click', this.item_click_handler());
     this.list.on('update', this.update_handler());
-    this.list.items_cont.each('.is-selected', (function(_this) {
-      return function(nod) {
-        return nod.selected = true;
-      };
-    })(this));
+    _ref = this.list.items;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      item = _ref[_i];
+      if (item.hasClass('is-selected')) {
+        item.__selected__ = true;
+      }
+    }
     this.list.delegate_to(this, 'clear_selection', 'selected', 'selected_item', 'select_all', 'select_item', 'selected_records', 'selected_record', 'deselect_item', 'toggle_select', 'selected_size');
   };
 
