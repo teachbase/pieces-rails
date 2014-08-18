@@ -7,9 +7,9 @@ Gem::Specification.new do |spec|
   spec.name          = "pieces-rails"
   spec.version       = Pieces::Rails::VERSION
   spec.authors       = ["palkan"]
-  spec.email         = ["dementiev@webils.ru"]
-  spec.summary       = %q{TODO: Write a short summary. Required.}
-  spec.description   = %q{TODO: Write a longer description. Optional.}
+  spec.email         = ["dementiev.vm@gmail.com"]
+  spec.summary       = %q{pieces.js for rails}
+  spec.description   = ""
   spec.homepage      = ""
   spec.license       = "MIT"
 
