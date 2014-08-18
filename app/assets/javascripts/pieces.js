@@ -78,7 +78,7 @@ pi.BaseInput = (function(_super) {
   }
 
   BaseInput.prototype.postinitialize = function() {
-    return this.input = this.node.nodeName === 'INPUT' ? this : this.find('input');
+    return this.input || (this.input = this.node.nodeName === 'INPUT' ? this : this.find('input'));
   };
 
   BaseInput.prototype.value = function(val) {
