@@ -46,7 +46,6 @@ describe HelpersController, type: :controller do
     end
   end
 
-
   describe 'select_field' do
     it 'should render empty select_field' do
       get :select_field_empty
@@ -72,7 +71,16 @@ describe HelpersController, type: :controller do
         '</ul>'+
         '</div></div>'
     end
-
   end
+
+
+  describe 'assets' do
+    it 'should load assets' do
+      get :assets
+      expect(response).to be_success
+      expect(response.body).to_not be_empty
+    end
+  end
+
 
 end

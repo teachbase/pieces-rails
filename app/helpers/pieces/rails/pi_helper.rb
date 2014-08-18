@@ -1,6 +1,6 @@
 module Pieces
   module Rails
-    module InputHelper
+    module PiHelper
       def pi_text_field(options={}, &block)
         merge_class! options, 'pi-text-input-wrap pi'
         content_tag(:div, nil, options) do

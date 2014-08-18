@@ -1,7 +1,3 @@
 require "pieces/rails/version"
-require "pieces/rails/engine"
-require "pieces/rails/input_helper"
-module Pieces
-  module Rails
-  end
-end
+require "pieces/rails/railtie"
+require "pieces/rails/engine" if defined?(::Rails)
