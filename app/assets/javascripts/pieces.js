@@ -1109,14 +1109,14 @@ pi.Base = (function(_super) {
   };
 
   Base.prototype.find_plugin = function(name) {
-    var klass;
+    var klass, _ref;
     name = utils.camelCase(name);
     klass = this.constructor;
     while ((klass != null)) {
       if (klass[name] != null) {
         return klass[name];
       }
-      klass = klass.__super__.constructor;
+      klass = (_ref = klass.__super__) != null ? _ref.constructor : void 0;
     }
     utils.warning("plugin not found: " + name);
     return null;
@@ -1189,7 +1189,7 @@ pi._guess_component = function(nod) {
   component_name = nod.data('component') || pi.Guesser.find(nod);
   component = utils.get_class_path(pi, component_name);
   if (component == null) {
-    throw new ReferenceError("unknown or initialized component " + component_name);
+    return utils.error("unknown or initialized component " + component_name);
   } else {
     utils.debug("component created: " + component_name);
     return component;
@@ -1818,16 +1818,12 @@ pi.TextArea = (function(_super) {
     return TextArea.__super__.constructor.apply(this, arguments);
   }
 
-  TextArea.prototype.initialize = function() {
+  TextArea.prototype.postinitialize = function() {
     this.input = this.node.nodeName === 'TEXTAREA' ? this : this.find('textarea');
-    this.editable = true;
-    if (this.options.readonly || this.hasClass('is-readonly')) {
-      this.make_readonly();
-    }
+    TextArea.__super__.postinitialize.apply(this, arguments);
     if (this.options.autosize === true) {
-      this.enable_autosize();
+      return this.enable_autosize();
     }
-    return pi.Base.prototype.initialize.apply(this);
   };
 
   TextArea.prototype.autosizer = function() {
