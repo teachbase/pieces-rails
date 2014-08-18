@@ -5752,6 +5752,9 @@ pi.List.Sortable = (function(_super) {
   };
 
   Sortable.prototype.sort = function(sort_params) {
+    if (sort_params == null) {
+      return;
+    }
     sort_params = utils.to_a(sort_params);
     this._prevs = sort_params;
     this.list.items.sort(function(a, b) {
@@ -5762,6 +5765,9 @@ pi.List.Sortable = (function(_super) {
   };
 
   Sortable.prototype.sorted = function(sort_params) {
+    if (sort_params == null) {
+      return;
+    }
     sort_params = utils.to_a(sort_params);
     this._prevs = sort_params;
     return this.list.trigger('sort_update', sort_params);
