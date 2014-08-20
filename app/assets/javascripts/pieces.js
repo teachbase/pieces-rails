@@ -6919,11 +6919,13 @@ require('./base');
 
 require('./plugins');
 
+require('./modules');
+
 require('./list.view');
 
 
 
-},{"./base":67,"./list.view":69,"./plugins":71}],69:[function(require,module,exports){
+},{"./base":67,"./list.view":69,"./modules":70,"./plugins":74}],69:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -6942,80 +6944,7 @@ pi.ListView = (function(_super) {
     return ListView.__super__.constructor.apply(this, arguments);
   }
 
-  ListView.requires('list', 'loader');
-
-  ListView.prototype.loading = function(value) {
-    if (value === true) {
-      this.loader.reset();
-      this.loader.start();
-      return this.loader.simulate();
-    } else if (value === false) {
-      return this.loader.stop();
-    }
-  };
-
-  ListView.prototype.sort = function(params) {
-    return this.list.sort(params);
-  };
-
-  ListView.prototype.sorted = function(params) {
-    if (params != null) {
-      return this.list.sortable.sorted(params);
-    }
-  };
-
-  ListView.prototype.search = function(query) {
-    this._query = query;
-    return this.list.search(query, true);
-  };
-
-  ListView.prototype.searched = function(query) {
-    utils.debug("loaded search " + query);
-    this.list.searchable.start_search();
-    if (query) {
-      return this.list.highlight(query);
-    } else {
-      return this.list.searchable.stop_search(false);
-    }
-  };
-
-  ListView.prototype.filter = function(data) {
-    return this.list.filter(data);
-  };
-
-  ListView.prototype.filtered = function(data) {
-    utils.debug("loaded filter", data);
-    this.list.filterable.start_filter();
-    if (data != null) {
-      return this.list.trigger('filter_update');
-    } else {
-      return this.list.filterable.stop_filter(false);
-    }
-  };
-
-  ListView.prototype.clear = function(data) {
-    var _ref;
-    utils.debug('clear list');
-    this.list.clear();
-    this.list.clear_selection() != null;
-    return (_ref = this.list.scroll_end) != null ? _ref.disable() : void 0;
-  };
-
-  ListView.prototype.load = function(data) {
-    var item, _i, _len;
-    for (_i = 0, _len = data.length; _i < _len; _i++) {
-      item = data[_i];
-      this.list.add_item(item, true);
-    }
-    return this.list.update();
-  };
-
-  ListView.prototype.reload = function(data) {
-    this.list.data_provider(data);
-    if (this._query) {
-      return this.searched(this._query);
-    }
-  };
+  ListView.include(pi.BaseView.Loadable, pi.BaseView.Listable);
 
   ListView.prototype.error = function(message) {
     return utils.error(message);
@@ -7032,6 +6961,129 @@ pi.ListView = (function(_super) {
 
 
 },{"../core":37,"./base":67}],70:[function(require,module,exports){
+'use strict'
+require('./listable')
+require('./loadable')
+},{"./listable":71,"./loadable":72}],71:[function(require,module,exports){
+'use strict';
+var pi, utils;
+
+pi = require('../../core');
+
+require('./../base');
+
+utils = pi.utils;
+
+pi.BaseView.Listable = (function() {
+  function Listable() {}
+
+  Listable.included = function(klass) {
+    return klass.requires('list');
+  };
+
+  Listable.prototype.sort = function(params) {
+    return this.list.sort(params);
+  };
+
+  Listable.prototype.sorted = function(params) {
+    if (params != null) {
+      return this.list.sortable.sorted(params);
+    }
+  };
+
+  Listable.prototype.search = function(query) {
+    this._query = query;
+    return this.list.search(query, true);
+  };
+
+  Listable.prototype.searched = function(query) {
+    utils.debug("loaded search " + query);
+    this.list.searchable.start_search();
+    if (query) {
+      return this.list.highlight(query);
+    } else {
+      return this.list.searchable.stop_search(false);
+    }
+  };
+
+  Listable.prototype.filter = function(data) {
+    return this.list.filter(data);
+  };
+
+  Listable.prototype.filtered = function(data) {
+    utils.debug("loaded filter", data);
+    this.list.filterable.start_filter();
+    if (data != null) {
+      return this.list.trigger('filter_update');
+    } else {
+      return this.list.filterable.stop_filter(false);
+    }
+  };
+
+  Listable.prototype.clear = function(data) {
+    var _ref;
+    utils.debug('clear list');
+    this.list.clear();
+    this.list.clear_selection() != null;
+    return (_ref = this.list.scroll_end) != null ? _ref.disable() : void 0;
+  };
+
+  Listable.prototype.load = function(data) {
+    var item, _i, _len;
+    for (_i = 0, _len = data.length; _i < _len; _i++) {
+      item = data[_i];
+      this.list.add_item(item, true);
+    }
+    return this.list.update();
+  };
+
+  Listable.prototype.reload = function(data) {
+    this.list.data_provider(data);
+    if (this._query) {
+      return this.searched(this._query);
+    }
+  };
+
+  return Listable;
+
+})();
+
+
+
+},{"../../core":37,"./../base":67}],72:[function(require,module,exports){
+'use strict';
+var pi, utils;
+
+pi = require('../../core');
+
+require('./../base');
+
+utils = pi.utils;
+
+pi.BaseView.Loadable = (function() {
+  function Loadable() {}
+
+  Loadable.included = function(klass) {
+    return klass.requires('loader');
+  };
+
+  Loadable.prototype.loading = function(value) {
+    if (value === true) {
+      this.loader.reset();
+      this.loader.start();
+      return this.loader.simulate();
+    } else if (value === false) {
+      return this.loader.stop();
+    }
+  };
+
+  return Loadable;
+
+})();
+
+
+
+},{"../../core":37,"./../base":67}],73:[function(require,module,exports){
 'use strict';
 var pi, utils, _app_rxp, _finder_rxp,
   __hasProp = {}.hasOwnProperty,
@@ -7127,7 +7179,7 @@ pi.Base.Restful = (function(_super) {
 
 
 
-},{"../../components/pieces":12,"../../core":37,"../../plugins/plugin":61}],71:[function(require,module,exports){
+},{"../../components/pieces":12,"../../core":37,"../../plugins/plugin":61}],74:[function(require,module,exports){
 'use strict';
 require('./base.restful');
 
@@ -7135,7 +7187,7 @@ require('./list.restful');
 
 
 
-},{"./base.restful":70,"./list.restful":72}],72:[function(require,module,exports){
+},{"./base.restful":73,"./list.restful":75}],75:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
