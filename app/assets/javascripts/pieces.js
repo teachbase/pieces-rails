@@ -1188,12 +1188,12 @@ pi.Base = (function(_super) {
   };
 
   Base.prototype.remove_children = function() {
-    var child, _i, _len, _ref;
-    _ref = this.__components__;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      child = _ref[_i];
-      child.remove();
+    var child, list, _i, _len;
+    list = this.__components__.slice();
+    for (_i = 0, _len = list.length; _i < _len; _i++) {
+      child = list[_i];
       this.remove_component(child);
+      child.remove();
     }
     return Base.__super__.remove_children.apply(this, arguments);
   };
@@ -5198,11 +5198,15 @@ pi.Base.Renderable = (function(_super) {
 
   Renderable.prototype.render = function(data) {
     var nod;
-    nod = this.target._renderer.render(data);
-    if (nod != null) {
-      this.target.remove_children();
-      this.target.append(nod);
-      this.target.piecify();
+    this.target.remove_children();
+    if (data != null) {
+      nod = this.target._renderer.render(data);
+      if (nod != null) {
+        this.target.append(nod);
+        this.target.piecify();
+      } else {
+        utils.error("failed to render data for: " + this.target.pid + "}");
+      }
     }
     return this.target;
   };
