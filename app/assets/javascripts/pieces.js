@@ -1583,7 +1583,9 @@ pi.PopupContainer = (function(_super) {
       return;
     }
     if (typeof options.close === 'function') {
-      options.close.call(null);
+      if (options.close.call(null) === false) {
+        return;
+      }
     }
     this.close();
   };
@@ -6889,15 +6891,15 @@ pi.BaseView = (function(_super) {
   BaseView.prototype.is_view = true;
 
   BaseView.prototype.postinitialize = function() {
-    var controller, controller_klass;
+    var controller_klass;
     controller_klass = null;
     if (this.options.controller) {
       controller_klass = utils.get_class_path(pi.controllers, this.options.controller);
     }
     controller_klass || (controller_klass = this.default_controller);
     if (controller_klass != null) {
-      controller = new controller_klass(this);
-      return pi.app.page.add_context(controller, this.options.main);
+      this.controller = new controller_klass(this);
+      return pi.app.page.add_context(this.controller, this.options.main);
     }
   };
 
