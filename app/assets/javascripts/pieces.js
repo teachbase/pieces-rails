@@ -2125,8 +2125,12 @@ pi.Renderers.Jst = (function(_super) {
 
   Jst.prototype.render = function(data) {
     var nod;
-    nod = pi.Nod.create(this.templater(data));
-    return this._render(nod, data);
+    if (data instanceof pi.Nod) {
+      return Jst.__super__.render.apply(this, arguments);
+    } else {
+      nod = pi.Nod.create(this.templater(data));
+      return this._render(nod, data);
+    }
   };
 
   return Jst;
@@ -2165,8 +2169,12 @@ pi.Renderers.Mustache = (function(_super) {
 
   Mustache.prototype.render = function(data) {
     var nod;
-    nod = pi.Nod.create(window.Mustache.render(this.template, data));
-    return this._render(nod, data);
+    if (data instanceof pi.Nod) {
+      return Mustache.__super__.render.apply(this, arguments);
+    } else {
+      nod = pi.Nod.create(window.Mustache.render(this.template, data));
+      return this._render(nod, data);
+    }
   };
 
   return Mustache;
