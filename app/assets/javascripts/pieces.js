@@ -275,7 +275,7 @@ pi.List = (function(_super) {
   List.prototype.parse_html_items = function() {
     this.items_cont.each("." + this.item_klass, (function(_this) {
       return function(node) {
-        return _this.add_item(pi.Nod.create(node), false);
+        return _this.add_item(pi.Nod.create(node), true);
       };
     })(this));
     return this._flush_buffer();
@@ -292,16 +292,16 @@ pi.List = (function(_super) {
     if (data != null) {
       for (_i = 0, _len = data.length; _i < _len; _i++) {
         item = data[_i];
-        this.add_item(item, false);
+        this.add_item(item, true);
       }
     }
     return this.update('load');
   };
 
-  List.prototype.add_item = function(data, update) {
+  List.prototype.add_item = function(data, silent) {
     var item;
-    if (update == null) {
-      update = true;
+    if (silent == null) {
+      silent = false;
     }
     item = this._create_item(data);
     if (item == null) {
@@ -310,12 +310,12 @@ pi.List = (function(_super) {
     this.items.push(item);
     this._check_empty();
     item.data('list-index', this.items.length - 1);
-    if (update) {
+    if (!silent) {
       this.items_cont.append(item);
     } else {
       this.buffer.appendChild(item.node);
     }
-    if (update) {
+    if (!silent) {
       return this.trigger('update', {
         type: 'item_added',
         item: item
@@ -323,13 +323,13 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype.add_item_at = function(data, index, update) {
+  List.prototype.add_item_at = function(data, index, silent) {
     var item, _after;
-    if (update == null) {
-      update = true;
+    if (silent == null) {
+      silent = false;
     }
     if (this.items.length - 1 < index) {
-      this.add_item(data, update);
+      this.add_item(data, silent);
       return;
     }
     item = this._create_item(data);
@@ -338,7 +338,7 @@ pi.List = (function(_super) {
     item.data('list-index', index);
     _after.insertBefore(item);
     this._need_update_indeces = true;
-    if (update) {
+    if (!silent) {
       this._update_indeces();
       return this.trigger('update', {
         type: 'item_added',
@@ -347,10 +347,10 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype.remove_item = function(item, update) {
+  List.prototype.remove_item = function(item, silent) {
     var index;
-    if (update == null) {
-      update = true;
+    if (silent == null) {
+      silent = false;
     }
     index = this.items.indexOf(item);
     if (index > -1) {
@@ -358,7 +358,7 @@ pi.List = (function(_super) {
       this._destroy_item(item);
       this._check_empty();
       this._need_update_indeces = true;
-      if (update) {
+      if (!silent) {
         this._update_indeces();
         this.trigger('update', {
           type: 'item_removed',
@@ -368,22 +368,22 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype.remove_item_at = function(index, update) {
+  List.prototype.remove_item_at = function(index, silent) {
     var item;
-    if (update == null) {
-      update = true;
+    if (silent == null) {
+      silent = false;
     }
     if (this.items.length - 1 < index) {
       return;
     }
     item = this.items[index];
-    return this.remove_item(item, update);
+    return this.remove_item(item, silent);
   };
 
-  List.prototype.update_item = function(item, data, update) {
+  List.prototype.update_item = function(item, data, silent) {
     var klass, new_item, _i, _len, _ref;
-    if (update == null) {
-      update = true;
+    if (silent == null) {
+      silent = false;
     }
     new_item = this._renderer.render(data);
     utils.extend(item.record, new_item.record, true);
@@ -396,7 +396,7 @@ pi.List = (function(_super) {
       }
     }
     item.mergeClasses(new_item);
-    if (update) {
+    if (!silent) {
       this.trigger('update', {
         type: 'item_updated',
         item: item
@@ -411,7 +411,7 @@ pi.List = (function(_super) {
       return;
     }
     this.items.splice(this.items.indexOf(item), 1);
-    if (index === (this.items.length - 1)) {
+    if (index === this.items.length) {
       this.items.push(item);
       this.items_cont.append(item);
     } else {
@@ -7106,7 +7106,7 @@ pi.List.Sortable = (function(_super) {
   Sortable.prototype._bisect_sort = function(item, left, right) {
     var a, i;
     if (right - left < 2) {
-      if (this._compare_fun(item, this.list.items[right]) > 0) {
+      if (this._compare_fun(item, this.list.items[left]) > 0) {
         this.list.move_item(item, right);
       } else {
         this.list.move_item(item, left);
