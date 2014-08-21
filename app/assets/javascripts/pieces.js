@@ -908,18 +908,7 @@ pi.Form = (function(_super) {
       serialize: !!this.options.serialize,
       rails: this.options.rails
     });
-    this.former.traverse_nodes(this.node, (function(_this) {
-      return function(node) {
-        var nod;
-        if (((nod = node._nod) instanceof pi.BaseInput) && nod.name()) {
-          _this._cache[nod.name()] = nod;
-          return utils.set_path(_this._value, _this.former.transform_name(nod.name()), nod.value());
-        } else if (utils.is_input(node) && node.name) {
-          _this._cache[node.name] = pi.Nod.create(node);
-          return utils.set_path(_this._value, _this.former.transform_name(node.name), _this.former._parse_nod_value(node));
-        }
-      };
-    })(this));
+    this.read_values();
     this.on(pi.InputEvent.Change, (function(_this) {
       return function(e) {
         e.cancel();
@@ -991,11 +980,14 @@ pi.Form = (function(_super) {
 
   Form.prototype.value = function(val) {
     if (val != null) {
-      return this.former.traverse_nodes(this.node, (function(_this) {
+      this._value = {};
+      this.former.traverse_nodes(this.node, (function(_this) {
         return function(node) {
           return _this.fill_value(node, val);
         };
       })(this));
+      this.read_values();
+      return this;
     } else {
       return this._value;
     }
@@ -1014,6 +1006,21 @@ pi.Form = (function(_super) {
     if (!silent) {
       return this.trigger(pi.InputEvent.Clear);
     }
+  };
+
+  Form.prototype.read_values = function() {
+    return this.former.traverse_nodes(this.node, (function(_this) {
+      return function(node) {
+        var nod;
+        if (((nod = node._nod) instanceof pi.BaseInput) && nod.name()) {
+          _this._cache[nod.name()] = nod;
+          return _this.update_value(nod.name(), nod.value(), true);
+        } else if (utils.is_input(node) && node.name) {
+          _this._cache[node.name] = pi.Nod.create(node);
+          return _this.update_value(node.name, _this.former._parse_nod_value(node));
+        }
+      };
+    })(this));
   };
 
   Form.prototype.find_by_name = function(name) {
@@ -1049,13 +1056,19 @@ pi.Form = (function(_super) {
     }
   };
 
-  Form.prototype.update_value = function(name, val) {
+  Form.prototype.update_value = function(name, val, silent) {
+    if (silent == null) {
+      silent = false;
+    }
     if (!name) {
       return;
     }
     name = this.former.transform_name(name);
+    val = this.former.transform_value(val);
     utils.set_path(this._value, name, val);
-    return this.trigger(pi.FormEvent.Update, this._value);
+    if (!silent) {
+      return this.trigger(pi.FormEvent.Update, this._value);
+    }
   };
 
   return Form;
@@ -3868,12 +3881,8 @@ pi.Former = (function() {
         }
         _arr_fullname = '';
         _current = _result;
-        if (_this.options.name_transform != null) {
-          name = _this.options.name_transform(name);
-        }
-        if (_this.options.parse_value != null) {
-          value = _this.options.parse_value(value);
-        }
+        name = _this.transform_name(name);
+        value = _this.transform_value(value);
         _name_parts = name.split(".");
         len = _name_parts.length;
         _results = [];
@@ -3952,6 +3961,13 @@ pi.Former = (function() {
       name = this.options.name_transform(name);
     }
     return name;
+  };
+
+  Former.prototype.transform_value = function(val) {
+    if (this.options.parse_value != null) {
+      return this.options.parse_value(val);
+    }
+    return val;
   };
 
   Former.prototype._to_array = function(val) {
