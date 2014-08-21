@@ -5660,7 +5660,9 @@ pi.Net = (function() {
   };
 
   Net._prepare_error = function(xhr) {
-    return xhr.responseText || xhr.statusText;
+    var response, type;
+    type = xhr.getResponseHeader('Content-Type');
+    return response = /json/.test(type) ? JSON.parse(xhr.responseText || ("{\"status\":" + xhr.statusText + "}")) : xhr.responseText || xhr.statusText;
   };
 
   Net._is_success = function(status) {
