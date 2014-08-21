@@ -7082,6 +7082,9 @@ pi.List.Sortable = (function(_super) {
         param = _ref[_i];
         _fn(param);
       }
+      this._compare_fun = function(a, b) {
+        return utils.keys_compare(a.record, b.record, this._prevs);
+      };
     }
     this.list.delegate_to(this, 'sort');
     return this.list.on('update', ((function(_this) {
