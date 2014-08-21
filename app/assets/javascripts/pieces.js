@@ -7365,6 +7365,8 @@ pi.resources.REST = (function(_super) {
 
   REST._rscope = "/:path";
 
+  REST.prototype.wrap_attributes = false;
+
   REST.set_resource = function(plural, singular) {
     REST.__super__.constructor.set_resource.apply(this, arguments);
     return this.routes({
@@ -7562,10 +7564,12 @@ pi.resources.REST = (function(_super) {
   };
 
   REST.prototype.save = function() {
+    var attrs;
+    attrs = this.wrap_attributes ? this._wrap(this.attributes()) : this.attributes();
     if (this._persisted) {
-      return this.update(this.attributes());
+      return this.update(attrs);
     } else {
-      return this.create(this.attributes());
+      return this.create(attrs);
     }
   };
 
@@ -7580,6 +7584,13 @@ pi.resources.REST = (function(_super) {
       }
     }
     return res;
+  };
+
+  REST.prototype._wrap = function(attributes) {
+    var data;
+    data = {};
+    data[this.constructor.resource_name] = attributes;
+    return data;
   };
 
   return REST;
