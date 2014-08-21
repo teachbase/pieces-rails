@@ -5661,6 +5661,10 @@ pi.Net = (function() {
     return response;
   };
 
+  Net._prepare_error = function(xhr) {
+    return xhr.responseText || xhr.statusText;
+  };
+
   Net._is_success = function(status) {
     return (status >= 200 && status < 300) || (status === 304);
   };
@@ -5797,7 +5801,7 @@ pi.Net = (function() {
           if (_this._is_success(req.status)) {
             return resolve(_this._prepare_response(req));
           } else {
-            return reject(Error(req.statusText));
+            return reject(Error(_this._prepare_error(req)));
           }
         };
         req.onerror = function() {
