@@ -19,7 +19,7 @@ pi.ActionList = (function(_super) {
     return ActionList.__super__.constructor.apply(this, arguments);
   }
 
-  ActionList.include_plugins(pi.List.Selectable, pi.List.Searchable, pi.List.Sortable, pi.List.Filterable, pi.List.ScrollEnd);
+  ActionList.include_plugins(pi.List.Selectable, pi.List.Sortable, pi.List.Searchable, pi.List.Filterable, pi.List.ScrollEnd);
 
   return ActionList;
 
@@ -403,6 +403,24 @@ pi.List = (function(_super) {
       });
     }
     return item;
+  };
+
+  List.prototype.move_item = function(item, index) {
+    var _after;
+    if ((item.data('list-index') === index) || (index > this.items.length - 1)) {
+      return;
+    }
+    this.items.splice(this.items.indexOf(item), 1);
+    if (index === (this.items.length - 1)) {
+      this.items.push(item);
+      this.items_cont.append(item);
+    } else {
+      this.items.splice(index, 0, item);
+      _after = this.items[index + 1];
+      _after.insertBefore(item);
+    }
+    this._need_update_indeces = true;
+    return this._update_indeces();
   };
 
   List.prototype.where = function(query) {
@@ -1321,11 +1339,11 @@ pi.Base = (function(_super) {
     this.options = options != null ? options : {};
     Base.__super__.constructor.apply(this, arguments);
     this.preinitialize();
-    this.__initialize();
+    this.initialize();
     this.init_plugins();
     this.init_children();
     this.setup_events();
-    this.__postinitialize();
+    this.postinitialize();
   }
 
   Base.prototype.piecify = function() {
@@ -1415,10 +1433,6 @@ pi.Base = (function(_super) {
     return this.active = false;
   };
 
-  Base.prototype.__initialize = function() {
-    return this.initialize();
-  };
-
   Base.prototype.initialize = function() {
     if (this.options.disabled || this.hasClass('is-disabled')) {
       this.disable();
@@ -1433,9 +1447,7 @@ pi.Base = (function(_super) {
     return this.trigger('initialized', true, false);
   };
 
-  Base.register_callback('__initialize', {
-    as: 'initialize'
-  });
+  Base.register_callback('initialize');
 
   Base.prototype.init_plugins = function() {
     var name, _i, _len, _ref;
@@ -1510,15 +1522,11 @@ pi.Base = (function(_super) {
     delete this.options.events;
   };
 
-  Base.prototype.__postinitialize = function() {
-    return this.postinitialize();
-  };
-
   Base.prototype.postinitialize = function() {
     return this.trigger('creation_complete', true, false);
   };
 
-  Base.register_callback('__postinitialize', {
+  Base.register_callback('postinitialize', {
     as: 'create'
   });
 
@@ -3165,8 +3173,6 @@ require('./utils');
 utils = pi.utils;
 
 pi.Core = (function() {
-  function Core() {}
-
   Core.include = function() {
     var mixin, mixins, _i, _len, _results;
     mixins = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
@@ -3204,7 +3210,7 @@ pi.Core = (function() {
   };
 
   Core.register_callback = function(method, options) {
-    var callback_name, _fn, _i, _len, _orig, _ref, _when;
+    var callback_name, _fn, _i, _len, _ref, _when;
     if (options == null) {
       options = {};
     }
@@ -3222,24 +3228,38 @@ pi.Core = (function() {
       _when = _ref[_i];
       _fn(_when);
     }
-    _orig = this.prototype[method];
-    return this.prototype[method] = function() {
+    this.prototype["__" + method] = function() {
       var args, res;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      this.run_callbacks("before_" + callback_name);
-      res = _orig.apply(this, args);
-      this.run_callbacks("after_" + callback_name);
+      this.run_callbacks("before_" + callback_name, args);
+      res = this.constructor.prototype[method].apply(this, args);
+      this.run_callbacks("after_" + callback_name, args);
       return res;
     };
+    return (this.callbacked || (this.callbacked = [])).push(method);
   };
 
-  Core.prototype.run_callbacks = function(type) {
+  function Core() {
+    var method, _fn, _i, _len, _ref;
+    _ref = this.constructor.callbacked || [];
+    _fn = (function(_this) {
+      return function(method) {
+        return _this[method] = _this["__" + method];
+      };
+    })(this);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      method = _ref[_i];
+      _fn(method);
+    }
+  }
+
+  Core.prototype.run_callbacks = function(type, args) {
     var callback, _i, _len, _ref, _results;
     _ref = this.constructor["_" + type] || [];
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       callback = _ref[_i];
-      _results.push(callback.call(this));
+      _results.push(callback.call(this, args));
     }
     return _results;
   };
@@ -3333,6 +3353,7 @@ pi.EventListener = (function(_super) {
     this.context = context != null ? context : null;
     this.disposable = disposable != null ? disposable : false;
     this.conditions = conditions;
+    EventListener.__super__.constructor.apply(this, arguments);
     if (this.handler._uid == null) {
       this.handler._uid = "fun" + utils.uid();
     }
@@ -3385,6 +3406,7 @@ pi.EventDispatcher = (function(_super) {
   EventDispatcher.prototype.listeners_by_key = '';
 
   function EventDispatcher() {
+    EventDispatcher.__super__.constructor.apply(this, arguments);
     this.listeners = {};
     this.listeners_by_key = {};
   }
@@ -3878,7 +3900,7 @@ pi.Former = (function() {
         }
         _arr_fullname = '';
         _current = _result;
-        name = _this.transform_name(name);
+        name = _this.transform_name(name, false);
         value = _this.transform_value(value);
         _name_parts = name.split(".");
         len = _name_parts.length;
@@ -3950,8 +3972,11 @@ pi.Former = (function() {
     return result;
   };
 
-  Former.prototype.transform_name = function(name) {
-    if (this.options.fill_prefix) {
+  Former.prototype.transform_name = function(name, prefix) {
+    if (prefix == null) {
+      prefix = true;
+    }
+    if (this.options.fill_prefix && prefix) {
       name = name.replace(this.options.fill_prefix, '');
     }
     if (this.options.name_transform != null) {
@@ -6140,16 +6165,29 @@ pi.List.Filterable = (function(_super) {
     this.list = list;
     Filterable.__super__.initialize.apply(this, arguments);
     this.list.delegate_to(this, 'filter');
-    return this.list.on('update', (function(e) {
-      if (e.data.type === 'item_added' && this.filtered) {
-        this._all_items.push(e.data.item);
-      }
-      return this.filter(this._prevf);
-    }), this, (function(_this) {
+    return this.list.on('update', ((function(_this) {
+      return function(e) {
+        return _this.item_updated(e.data.item);
+      };
+    })(this)), this, (function(_this) {
       return function(e) {
         return e.data.type === 'item_added' || e.data.type === 'item_updated';
       };
     })(this));
+  };
+
+  Filterable.prototype.item_updated = function(item) {
+    if (!this.matcher) {
+      return;
+    }
+    if (this._all_items.indexOf(item) < 0) {
+      this._all_items.unshift(item);
+    }
+    if (this.matcher(item)) {
+
+    } else if (this.filtered) {
+      return this.list.remove_item(item, true);
+    }
   };
 
   Filterable.prototype.all_items = function() {
@@ -6182,11 +6220,12 @@ pi.List.Filterable = (function(_super) {
       this.list.data_provider(this.all_items());
     }
     this._all_items = null;
+    this.matcher = null;
     return this.list.trigger('filter_stop');
   };
 
   Filterable.prototype.filter = function(params) {
-    var item, matcher, scope, _buffer;
+    var item, scope, _buffer;
     if (params == null) {
       return this.stop_filter();
     }
@@ -6195,7 +6234,7 @@ pi.List.Filterable = (function(_super) {
     }
     scope = _is_continuation(this._prevf, params) ? this.list.items.slice() : this.all_items();
     this._prevf = params;
-    matcher = _matcher({
+    this.matcher = _matcher({
       record: params
     });
     _buffer = (function() {
@@ -6203,12 +6242,12 @@ pi.List.Filterable = (function(_super) {
       _results = [];
       for (_i = 0, _len = scope.length; _i < _len; _i++) {
         item = scope[_i];
-        if (matcher(item)) {
+        if (this.matcher(item)) {
           _results.push(item);
         }
       }
       return _results;
-    })();
+    }).call(this);
     this.list.data_provider(_buffer);
     return this.list.trigger('filter_update');
   };
@@ -6650,16 +6689,29 @@ pi.List.Searchable = (function(_super) {
     this.update_scope(this.list.options.search_scope);
     this.list.delegate_to(this, 'search', 'highlight');
     this.searching = false;
-    this.list.on('update', (function(e) {
-      if (e.data.type === 'item_added' && this.searching) {
-        this._all_items.push(e.data.item);
-      }
-      return this.search(this._prevq);
-    }), this, (function(_this) {
+    this.list.on('update', ((function(_this) {
+      return function(e) {
+        return _this.item_updated(e.data.item);
+      };
+    })(this)), this, (function(_this) {
       return function(e) {
         return e.data.type === 'item_added' || e.data.type === 'item_updated';
       };
     })(this));
+  };
+
+  Searchable.prototype.item_updated = function(item) {
+    if (!this.matcher) {
+      return;
+    }
+    if (this._all_items.indexOf(item) < 0) {
+      this._all_items.unshift(item);
+    }
+    if (this.matcher(item)) {
+      this.highlight_item(this._prevq, item);
+    } else if (this.searching) {
+      return this.list.remove_item(item, true);
+    }
   };
 
   Searchable.prototype.update_scope = function(scope) {
@@ -6721,6 +6773,7 @@ pi.List.Searchable = (function(_super) {
       this.list.data_provider(items);
     }
     this._all_items = null;
+    this.matcher = null;
     return this.list.trigger('search_stop');
   };
 
@@ -6767,7 +6820,7 @@ pi.List.Searchable = (function(_super) {
   };
 
   Searchable.prototype.search = function(q, highlight) {
-    var item, matcher, scope, _buffer;
+    var item, scope, _buffer;
     if (q == null) {
       q = '';
     }
@@ -6782,18 +6835,18 @@ pi.List.Searchable = (function(_super) {
     }
     scope = _is_continuation(this._prevq, q) ? this.list.items.slice() : this.all_items();
     this._prevq = q;
-    matcher = this.matcher_factory(q);
+    this.matcher = this.matcher_factory(q);
     _buffer = (function() {
       var _i, _len, _results;
       _results = [];
       for (_i = 0, _len = scope.length; _i < _len; _i++) {
         item = scope[_i];
-        if (matcher(item)) {
+        if (this.matcher(item)) {
           _results.push(item);
         }
       }
       return _results;
-    })();
+    }).call(this);
     this.list.data_provider(_buffer);
     if (highlight) {
       this.highlight(q);
@@ -6837,7 +6890,6 @@ pi.List.Selectable = (function(_super) {
     this.list.merge_classes.push('is-selected');
     this.type(this.list.options.select_type || 'radio');
     this.list.on('item_click', this.item_click_handler());
-    this.list.on('update', this.update_handler());
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
@@ -6846,6 +6898,13 @@ pi.List.Selectable = (function(_super) {
       }
     }
     this.list.delegate_to(this, 'clear_selection', 'selected', 'selected_item', 'select_all', 'select_item', 'selected_records', 'selected_record', 'deselect_item', 'toggle_select', 'selected_size');
+    this.list.on('update', ((function(_this) {
+      return function(e) {
+        return _this._check_selected();
+      };
+    })(this)), this, function(e) {
+      return e.data.type !== 'item_added';
+    });
   };
 
   Selectable.prototype.type = function(value) {
@@ -6870,17 +6929,6 @@ pi.List.Selectable = (function(_super) {
           } else {
             _this.list.trigger('selection_cleared');
           }
-        }
-      };
-    })(this));
-  };
-
-  Selectable.prototype.update_handler = function() {
-    return this._update_handler || (this._update_handler = (function(_this) {
-      return function(e) {
-        var _ref;
-        if (!((((_ref = e.data) != null ? _ref.type : void 0) != null) && e.data.type === 'item_added')) {
-          return _this._check_selected();
         }
       };
     })(this));
@@ -7015,14 +7063,61 @@ pi.List.Sortable = (function(_super) {
   Sortable.prototype.id = 'sortable';
 
   Sortable.prototype.initialize = function(list) {
+    var param, _fn, _i, _len, _ref;
     this.list = list;
     Sortable.__super__.initialize.apply(this, arguments);
+    if (this.list.options.sort != null) {
+      this._prevs = [];
+      _ref = this.list.options.sort.split(",");
+      _fn = (function(_this) {
+        return function(param) {
+          var data, key, order, _ref1;
+          data = {};
+          _ref1 = param.split(":"), key = _ref1[0], order = _ref1[1];
+          data[key] = order;
+          return _this._prevs.push(data);
+        };
+      })(this);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        param = _ref[_i];
+        _fn(param);
+      }
+    }
     this.list.delegate_to(this, 'sort');
-    return this.list.on('update', (function() {
-      return this.sort(this._prevs);
-    }), this, function(e) {
+    return this.list.on('update', ((function(_this) {
+      return function(e) {
+        return _this.item_updated(e.data.item);
+      };
+    })(this)), this, function(e) {
       return e.data.type === 'item_added' || e.data.type === 'item_updated';
     });
+  };
+
+  Sortable.prototype.item_updated = function(item) {
+    if (!this._compare_fun) {
+      return;
+    }
+    return this._bisect_sort(item, 0, this.list.size() - 1);
+  };
+
+  Sortable.prototype._bisect_sort = function(item, left, right) {
+    var a, i;
+    if (right - left < 2) {
+      if (this._compare_fun(item, this.list.items[right]) > 0) {
+        this.list.move_item(item, right);
+      } else {
+        this.list.move_item(item, left);
+      }
+      return;
+    }
+    i = (left + (right - left) / 2) | 0;
+    a = this.list.items[i];
+    if (this._compare_fun(item, a) > 0) {
+      left = i;
+    } else {
+      right = i;
+    }
+    return this._bisect_sort(item, left, right);
   };
 
   Sortable.prototype.sort = function(sort_params) {
@@ -7031,9 +7126,10 @@ pi.List.Sortable = (function(_super) {
     }
     sort_params = utils.to_a(sort_params);
     this._prevs = sort_params;
-    this.list.items.sort(function(a, b) {
+    this._compare_fun = function(a, b) {
       return utils.keys_compare(a.record, b.record, sort_params);
-    });
+    };
+    this.list.items.sort(this._compare_fun);
     this.list.data_provider(this.list.items.slice());
     return this.list.trigger('sort_update', sort_params);
   };
@@ -7044,6 +7140,9 @@ pi.List.Sortable = (function(_super) {
     }
     sort_params = utils.to_a(sort_params);
     this._prevs = sort_params;
+    this._compare_fun = function(a, b) {
+      return utils.keys_compare(a.record, b.record, sort_params);
+    };
     return this.list.trigger('sort_update', sort_params);
   };
 
