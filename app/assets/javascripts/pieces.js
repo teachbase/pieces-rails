@@ -2751,23 +2751,21 @@ pi.controllers.ListController = (function(_super) {
     }
     params = utils.merge(this.scope().params, params);
     this.view.loading(true);
-    return this.resources.query(params)["catch"]((function(_this) {
-      return function(error) {
-        return _this.view.error(error.message);
-      };
-    })(this)).then((function(_this) {
+    return this.resources.query(params).then(((function(_this) {
       return function(response) {
         _this.view.loading(false);
-        return response;
-      };
-    })(this)).then((function(_this) {
-      return function(response) {
         if ((response != null ? response.message : void 0) != null) {
           _this.view.success(response.message);
         }
         return response;
       };
-    })(this));
+    })(this)), ((function(_this) {
+      return function(error) {
+        _this.view.loading(false);
+        _this.view.error(error.message);
+        throw error;
+      };
+    })(this)));
   };
 
   ListController.prototype.index = function(params) {
