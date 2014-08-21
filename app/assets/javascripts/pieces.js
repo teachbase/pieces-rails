@@ -1890,7 +1890,6 @@ pi.PopupContainer = (function(_super) {
   PopupContainer.prototype.add_container = function() {
     this.cont = pi.Nod.create('div').piecify();
     this.cont.addClass('pi-popup-container');
-    this.cont.hide();
     this.overlay.style("z-index", ++this.z);
     this.__containers__.push(this.cont);
     this.append(this.cont);
