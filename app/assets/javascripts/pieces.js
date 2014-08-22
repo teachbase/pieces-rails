@@ -2672,11 +2672,19 @@ pi.controllers.Base = (function(_super) {
     return this._initialized = true;
   };
 
-  Base.prototype.load = function(data) {
+  Base.prototype.load = function(context_data) {
     if (!this._initialized) {
       this.initialize();
     }
-    this.view.loaded(data);
+    this.view.loaded(context_data.data);
+  };
+
+  Base.prototype.reload = function(context_data) {
+    this.view.reloaded(context_data.data);
+  };
+
+  Base.prototype.switched = function() {
+    this.view.switched();
   };
 
   Base.prototype.unload = function() {
@@ -3099,9 +3107,27 @@ pi.controllers.Page = (function(_super) {
     return this.switch_context(null, this._main_context_id);
   };
 
-  Page.prototype.switch_context = function(from, to, data, history) {
-    if (history == null) {
-      history = false;
+  Page.prototype.wrap_context_data = function(context, data) {
+    var res;
+    res = {};
+    if (context != null) {
+      res.context = context.id;
+    }
+    if ((context != null ? context.data_wrap : void 0) != null) {
+      res.data = {};
+      res.data[context.data_wrap] = data;
+    } else {
+      res.data = data;
+    }
+    return res;
+  };
+
+  Page.prototype.switch_context = function(from, to, data, exit) {
+    if (data == null) {
+      data = {};
+    }
+    if (exit == null) {
+      exit = false;
     }
     if (from && from !== this.context_id) {
       utils.warning("trying to switch from non-active context");
@@ -3116,14 +3142,23 @@ pi.controllers.Page = (function(_super) {
     }
     utils.info("context switch: " + from + " -> " + to);
     if (this.context != null) {
-      this.context.unload();
+      if (exit) {
+        this.context.unload();
+      } else {
+        this.context.switched();
+      }
     }
-    if ((from != null) && !history) {
+    data = this.wrap_context_data(this.context, data);
+    if ((from != null) && !exit) {
       this._history.push(from);
     }
     this.context = this._contexts[to];
     this.context_id = to;
-    this.context.load(data);
+    if (exit) {
+      this.context.reload(data);
+    } else {
+      this.context.load(data);
+    }
     return true;
   };
 
@@ -3133,7 +3168,7 @@ pi.controllers.Page = (function(_super) {
 
   Page.prototype.switch_back = function(data) {
     if (this.context != null) {
-      return this.switch_context(this.context_id, this._history.pop(), data, history);
+      return this.switch_context(this.context_id, this._history.pop(), data, true);
     }
   };
 
@@ -7752,6 +7787,10 @@ pi.BaseView = (function(_super) {
   };
 
   BaseView.prototype.loaded = function(data) {};
+
+  BaseView.prototype.reloaded = function(data) {};
+
+  BaseView.prototype.switched = function() {};
 
   BaseView.prototype.unloaded = function() {};
 
