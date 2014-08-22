@@ -386,6 +386,15 @@ pi.List = (function(_super) {
     return this.remove_item(item, silent);
   };
 
+  List.prototype.remove_items = function(items) {
+    var item, _i, _len;
+    for (_i = 0, _len = items.length; _i < _len; _i++) {
+      item = items[_i];
+      this.remove_item(item, true);
+    }
+    this.update();
+  };
+
   List.prototype.update_item = function(item, data, silent) {
     var klass, new_item, _i, _len, _ref;
     if (silent == null) {
