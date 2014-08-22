@@ -7727,6 +7727,15 @@ pi.resources.REST = (function(_super) {
     }
   };
 
+  REST.build = function() {
+    var el;
+    el = REST.__super__.constructor.build.apply(this, arguments);
+    if (el.id != null) {
+      el._persisted = true;
+    }
+    return el;
+  };
+
   REST.find = function(id) {
     var el;
     el = this.get(id);
