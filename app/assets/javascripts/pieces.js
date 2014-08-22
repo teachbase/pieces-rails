@@ -406,7 +406,7 @@ pi.List = (function(_super) {
     _ref = item.node.className.split(/\s+/);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       klass = _ref[_i];
-      if (__indexOf.call(this.merge_classes, klass) < 0) {
+      if (klass && !(__indexOf.call(this.merge_classes, klass) >= 0)) {
         item.removeClass(klass);
       }
     }
@@ -4663,7 +4663,9 @@ pi.Nod = (function(_super) {
     _ref = nod.node.className.split(/\s+/);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       klass = _ref[_i];
-      this.addClass(klass);
+      if (klass) {
+        this.addClass(klass);
+      }
     }
     return this;
   };
