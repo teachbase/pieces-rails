@@ -295,7 +295,8 @@ pi.List = (function(_super) {
         this.add_item(item, true);
       }
     }
-    return this.update('load');
+    this.update('load');
+    return this;
   };
 
   List.prototype.add_item = function(data, silent) {
@@ -316,11 +317,12 @@ pi.List = (function(_super) {
       this.buffer.appendChild(item.node);
     }
     if (!silent) {
-      return this.trigger('update', {
+      this.trigger('update', {
         type: 'item_added',
         item: item
       });
     }
+    return item;
   };
 
   List.prototype.add_item_at = function(data, index, silent) {
@@ -340,11 +342,12 @@ pi.List = (function(_super) {
     this._need_update_indeces = true;
     if (!silent) {
       this._update_indeces();
-      return this.trigger('update', {
+      this.trigger('update', {
         type: 'item_added',
         item: item
       });
     }
+    return item;
   };
 
   List.prototype.remove_item = function(item, silent) {
@@ -365,6 +368,9 @@ pi.List = (function(_super) {
           item: item
         });
       }
+      return true;
+    } else {
+      return false;
     }
   };
 
@@ -420,7 +426,8 @@ pi.List = (function(_super) {
       _after.insertBefore(item);
     }
     this._need_update_indeces = true;
-    return this._update_indeces();
+    this._update_indeces();
+    return item;
   };
 
   List.prototype.where = function(query) {
@@ -5306,7 +5313,8 @@ pi.utils = (function() {
       (ths || {}).__debounce_id__ = pi.utils.after(period, function() {
         _wait = false;
         if (_buf != null) {
-          return fun.apply(ths, _buf);
+          fun.apply(ths, _buf);
+          return _buf = null;
         }
       });
       _wait = true;
@@ -5725,6 +5733,10 @@ pi.Net = (function() {
     return response = /json/.test(type) ? JSON.parse(xhr.responseText || ("{\"status\":" + xhr.statusText + "}")) : xhr.responseText || xhr.statusText;
   };
 
+  Net._is_app_error = function(status) {
+    return status >= 400 && status < 500;
+  };
+
   Net._is_success = function(status) {
     return (status >= 200 && status < 300) || (status === 304);
   };
@@ -5860,8 +5872,10 @@ pi.Net = (function() {
           }
           if (_this._is_success(req.status)) {
             return resolve(_this._prepare_response(req));
-          } else {
+          } else if (_this._is_app_error(req.status)) {
             return reject(Error(_this._prepare_error(req)));
+          } else {
+            return reject(Error('500 Internal Server Error'));
           }
         };
         req.onerror = function() {
@@ -6935,6 +6949,7 @@ pi.List.Selectable = (function(_super) {
     this.list.delegate_to(this, 'clear_selection', 'selected', 'selected_item', 'select_all', 'select_item', 'selected_records', 'selected_record', 'deselect_item', 'toggle_select', 'selected_size');
     this.list.on('update', ((function(_this) {
       return function(e) {
+        _this._selected = null;
         return _this._check_selected();
       };
     })(this)), this, function(e) {
@@ -7375,6 +7390,7 @@ pi.resources.Base = (function(_super) {
   };
 
   function Base(data) {
+    Base.__super__.constructor.apply(this, arguments);
     this.set(data, true);
   }
 
@@ -7477,9 +7493,10 @@ pi.resources.Query = (function() {
 
 },{"../../core":42,"../rest":71}],71:[function(require,module,exports){
 'use strict';
-var pi, utils, _double_slashes_reg, _path_reg, _tailing_slash_reg,
+var pi, utils, _double_slashes_reg, _path_reg, _set_param, _tailing_slash_reg,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
 
 pi = require('../core');
 
@@ -7493,6 +7510,52 @@ _double_slashes_reg = /\/\//;
 
 _tailing_slash_reg = /\/$/;
 
+_set_param = function(data, from, param) {
+  var el, key, p, vals, _fn, _i, _j, _len, _len1;
+  if (from == null) {
+    return;
+  }
+  if (Array.isArray(from)) {
+    _fn = function(el) {
+      var el_data;
+      el_data = {};
+      _set_param(el_data, el, param);
+      return data.push(el_data);
+    };
+    for (_i = 0, _len = from.length; _i < _len; _i++) {
+      el = from[_i];
+      _fn(el);
+    }
+    data;
+  } else {
+    if (typeof param === 'string') {
+      if (from[param] != null) {
+        data[param] = from[param];
+      }
+    } else if (Array.isArray(param)) {
+      for (_j = 0, _len1 = param.length; _j < _len1; _j++) {
+        p = param[_j];
+        _set_param(data, from, p);
+      }
+    } else {
+      for (key in param) {
+        if (!__hasProp.call(param, key)) continue;
+        vals = param[key];
+        if (from[key] == null) {
+          return;
+        }
+        if (Array.isArray(from[key])) {
+          data[key] = [];
+        } else {
+          data[key] = {};
+        }
+        _set_param(data[key], from[key], vals);
+      }
+    }
+  }
+  return data;
+};
+
 pi.resources.REST = (function(_super) {
   __extends(REST, _super);
 
@@ -7503,6 +7566,17 @@ pi.resources.REST = (function(_super) {
   REST._rscope = "/:path";
 
   REST.prototype.wrap_attributes = false;
+
+  REST.params = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    if (args.indexOf('id') < 0) {
+      args.push('id');
+    }
+    return this.prototype.attributes = function() {
+      return this.__attributes__ || (this.__attributes__ = _set_param({}, this, args));
+    };
+  };
 
   REST.set_resource = function(plural, singular) {
     REST.__super__.constructor.set_resource.apply(this, arguments);
@@ -7700,6 +7774,11 @@ pi.resources.REST = (function(_super) {
     }
   };
 
+  REST.prototype.set = function() {
+    this.__attributes__ = null;
+    return REST.__super__.set.apply(this, arguments);
+  };
+
   REST.prototype.save = function() {
     var attrs;
     attrs = this.wrap_attributes ? this._wrap(this.attributes()) : this.attributes();
@@ -7710,18 +7789,7 @@ pi.resources.REST = (function(_super) {
     }
   };
 
-  REST.prototype.attributes = function() {
-    var key, res, val;
-    res = {};
-    for (key in this) {
-      if (!__hasProp.call(this, key)) continue;
-      val = this[key];
-      if (key[0] !== "_") {
-        res[key] = val;
-      }
-    }
-    return res;
-  };
+  REST.register_callback('save');
 
   REST.prototype._wrap = function(attributes) {
     var data;
@@ -8098,25 +8166,53 @@ pi.List.Restful = (function(_super) {
   Restful.prototype.id = 'restful';
 
   Restful.prototype.initialize = function(list) {
+    var resources;
     this.list = list;
     Restful.__super__.initialize.apply(this, arguments);
+    this.items_by_id = {};
     if ((this.list.options.rest != null) && ($r[utils.camelCase(this.list.options.rest)] != null)) {
-      this.resources = $r[utils.camelCase(this.list.options.rest)];
-      this.resources.listen(this.resource_update());
-      this.list.delegate_to(this, 'find_by_id');
+      resources = $r[utils.camelCase(this.list.options.rest)];
+      this.bind(resources, this.list.options.load_rest);
+    }
+    this.list.delegate_to(this, 'find_by_id');
+  };
+
+  Restful.prototype.bind = function(resources, load) {
+    if (load == null) {
+      load = false;
+    }
+    if (this.resources) {
+      this.resources.off(this.resources_update());
+    }
+    this.resources = resources;
+    this.resources.listen(this.resource_update());
+    if (load) {
+      return this.load(resources.all());
     }
   };
 
   Restful.prototype.find_by_id = function(id) {
     var items;
+    if (this.items_by_id[id] != null) {
+      return this.items_by_id[id];
+    }
     items = this.list.where({
       record: {
         id: id | 0
       }
     });
     if (items.length) {
-      return items[0];
+      return this.items_by_id[id] = items[0];
     }
+  };
+
+  Restful.prototype.load = function(data) {
+    var item, _i, _len;
+    for (_i = 0, _len = data.length; _i < _len; _i++) {
+      item = data[_i];
+      this.items_by_id[item.id] = this.list.add_item(item, true);
+    }
+    return this.list.update();
   };
 
   Restful.prototype.resource_update = function() {
@@ -8130,13 +8226,14 @@ pi.List.Restful = (function(_super) {
   };
 
   Restful.prototype.on_create = function(data) {
-    return this.list.add_item(data);
+    return this.items_by_id[data.id] = this.list.add_item(data);
   };
 
   Restful.prototype.on_destroy = function(data) {
     var item;
     if ((item = this.find_by_id(data.id))) {
-      return this.list.remove_item(item);
+      this.list.remove_item(item);
+      return delete this.items_by_id[item.id];
     }
   };
 
