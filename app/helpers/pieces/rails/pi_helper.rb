@@ -12,7 +12,7 @@ module Pieces
         merge_class! options, "pi-select-field pi"
         content_tag(:div, nil, options) do
           concat hidden_field_tag(name,val)
-          concat content_tag(:div, placeholder, class: 'pi placeholder', pid: "placeholder")
+          concat content_tag(:div, placeholder, class: 'pi placeholder', pid: "placeholder", data:{placeholder: placeholder})
           concat(
             content_tag(:div, nil, class: 'pi is-hidden list-container pi-select-list', pid: "dropdown") do
               content_tag(:ul, nil, class: 'list') do
