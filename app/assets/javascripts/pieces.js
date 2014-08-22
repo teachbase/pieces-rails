@@ -5388,7 +5388,7 @@ History = (function() {
 
   History.prototype.push = function(item) {
     if (this._position < 0) {
-      this._storage.splice(this._storage.length + this._position - 1, -this._position);
+      this._storage.splice(this._storage.length + this._position, -this._position);
       this._position = 0;
     }
     return this._storage.push(item);
