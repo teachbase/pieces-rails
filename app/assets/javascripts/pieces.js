@@ -29,7 +29,7 @@ pi.Guesser.rules_for('action_list', ['pi-action-list']);
 
 
 
-},{"../core":42,"../plugins/list":59,"./base/list":6}],2:[function(require,module,exports){
+},{"../core":42,"../plugins/list":60,"./base/list":6}],2:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -174,72 +174,6 @@ pi.List = (function(_super) {
   }
 
   List.include_plugins(pi.Base.Renderable);
-
-  List.string_matcher = function(string) {
-    var query, regexp, selectors, _ref;
-    if (string.indexOf(":") > 0) {
-      _ref = string.split(":"), selectors = _ref[0], query = _ref[1];
-      regexp = new RegExp(query, 'i');
-      selectors = selectors.split(',');
-      return function(item) {
-        var selector, _i, _len, _ref1;
-        for (_i = 0, _len = selectors.length; _i < _len; _i++) {
-          selector = selectors[_i];
-          if (!!((_ref1 = item.find(selector)) != null ? _ref1.text().match(regexp) : void 0)) {
-            return true;
-          }
-        }
-        return false;
-      };
-    } else {
-      regexp = new RegExp(string, 'i');
-      return function(item) {
-        return !!item.text().match(regexp);
-      };
-    }
-  };
-
-  List.object_matcher = function(obj, all) {
-    var key, val, _fn;
-    if (all == null) {
-      all = true;
-    }
-    _fn = (function(_this) {
-      return function(key, val) {
-        if (typeof val === "object") {
-          return obj[key] = _this.object_matcher(val, all);
-        } else if (!(typeof val === 'function')) {
-          return obj[key] = function(value) {
-            return val === value;
-          };
-        }
-      };
-    })(this);
-    for (key in obj) {
-      val = obj[key];
-      _fn(key, val);
-    }
-    return function(item) {
-      var matcher, _any;
-      _any = false;
-      for (key in obj) {
-        matcher = obj[key];
-        if (item[key] != null) {
-          if (matcher(item[key])) {
-            _any = true;
-            if (!all) {
-              return _any;
-            }
-          } else {
-            if (all) {
-              return false;
-            }
-          }
-        }
-      }
-      return _any;
-    };
-  };
 
   List.prototype.merge_classes = ['is-disabled', 'is-active', 'is-hidden'];
 
@@ -402,6 +336,7 @@ pi.List = (function(_super) {
     }
     new_item = this._renderer.render(data);
     utils.extend(item.record, new_item.record, true);
+    item.remove_children();
     item.html(new_item.html());
     _ref = item.node.className.split(/\s+/);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -411,6 +346,7 @@ pi.List = (function(_super) {
       }
     }
     item.mergeClasses(new_item);
+    item.piecify();
     if (!silent) {
       this.trigger('update', {
         type: 'item_updated',
@@ -441,7 +377,7 @@ pi.List = (function(_super) {
 
   List.prototype.where = function(query) {
     var item, matcher, _i, _len, _ref, _results;
-    matcher = typeof query === "string" ? this.constructor.string_matcher(query) : this.constructor.object_matcher(query);
+    matcher = typeof query === "string" ? utils.matchers.nod(query) : utils.matchers.object(query);
     _ref = this.items;
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -566,7 +502,7 @@ pi.Guesser.rules_for('list', ['pi-list'], ['ul'], function(nod) {
 
 
 
-},{"../../core":42,"../../plugins/base/renderable":55,"../pieces":16}],7:[function(require,module,exports){
+},{"../../core":42,"../../plugins/base/renderable":56,"../pieces":16}],7:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -1280,7 +1216,7 @@ require('./form');
 
 
 
-},{"../plugins/index":57,"./action_list":1,"./app":2,"./base/index":5,"./checkbox":9,"./events":10,"./file_input":12,"./form":13,"./guess/guesser":14,"./pieces":16,"./popup_container":17,"./progress_bar":18,"./renderers":20,"./search_input":23,"./select_input":24,"./sorters":25,"./swf_player":26,"./textarea":27,"./toggle_button":28}],16:[function(require,module,exports){
+},{"../plugins/index":58,"./action_list":1,"./app":2,"./base/index":5,"./checkbox":9,"./events":10,"./file_input":12,"./form":13,"./guess/guesser":14,"./pieces":16,"./popup_container":17,"./progress_bar":18,"./renderers":20,"./search_input":23,"./select_input":24,"./sorters":25,"./swf_player":26,"./textarea":27,"./toggle_button":28}],16:[function(require,module,exports){
 'use strict';
 var Nod, event_re, pi, utils, _array_rxp, _call_reg, _condition_regexp, _conditional, _fun_reg, _method_reg, _null, _op_reg, _operators, _str_reg,
   __hasProp = {}.hasOwnProperty,
@@ -2653,7 +2589,7 @@ pi.Guesser.rules_for('toggle_button', ['pi-toggle-button']);
 
 
 
-},{"../core":42,"../plugins/base/selectable":56,"./base/button":4}],29:[function(require,module,exports){
+},{"../core":42,"../plugins/base/selectable":57,"./base/button":4}],29:[function(require,module,exports){
 'use strict';
 var app, pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -5426,9 +5362,11 @@ require('./time');
 
 require('./logger');
 
+require('./matchers');
 
 
-},{"./base":45,"./logger":48,"./time":49}],48:[function(require,module,exports){
+
+},{"./base":45,"./logger":48,"./matchers":49,"./time":50}],48:[function(require,module,exports){
 'use strict';
 var level, pi, utils, val, _log_levels, _show_log,
   __slice = [].slice;
@@ -5487,7 +5425,156 @@ for (level in _log_levels) {
 
 
 
-},{"../pi":44,"./base":45,"./time":49}],49:[function(require,module,exports){
+},{"../pi":44,"./base":45,"./time":50}],49:[function(require,module,exports){
+'use strict';
+var pi, utils, _key_operand, _operands,
+  __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+  __hasProp = {}.hasOwnProperty;
+
+pi = require('../pi');
+
+require('./base');
+
+utils = pi.utils;
+
+_operands = {
+  "?": function(values) {
+    return function(value) {
+      return __indexOf.call(values, value) >= 0;
+    };
+  },
+  "?&": function(values) {
+    return function(value) {
+      var v, _i, _len;
+      for (_i = 0, _len = values.length; _i < _len; _i++) {
+        v = values[_i];
+        if (!(__indexOf.call(value, v) >= 0)) {
+          return false;
+        }
+      }
+      return true;
+    };
+  },
+  ">": function(val) {
+    return function(value) {
+      return value >= val;
+    };
+  },
+  "<": function(val) {
+    return function(value) {
+      return value <= val;
+    };
+  },
+  "~": function(val) {
+    if (typeof val === 'string') {
+      val = new RegExp(utils.escapeRegexp(val));
+    }
+    return function(value) {
+      return val.test(value);
+    };
+  }
+};
+
+_key_operand = /^([\w\d_]+)(\?&|>|<|~|\?)$/;
+
+pi.utils.matchers = (function() {
+  function matchers() {}
+
+  matchers.object = function(obj, all) {
+    var key, val, _fn;
+    if (all == null) {
+      all = true;
+    }
+    _fn = (function(_this) {
+      return function(key, val) {
+        if (typeof val === "object") {
+          return obj[key] = _this.object(val, all);
+        } else if (!(typeof val === 'function')) {
+          return obj[key] = function(value) {
+            return val === value;
+          };
+        }
+      };
+    })(this);
+    for (key in obj) {
+      val = obj[key];
+      _fn(key, val);
+    }
+    return function(item) {
+      var matcher, _any;
+      _any = false;
+      for (key in obj) {
+        matcher = obj[key];
+        if (item[key] != null) {
+          if (matcher(item[key])) {
+            _any = true;
+            if (!all) {
+              return _any;
+            }
+          } else {
+            if (all) {
+              return false;
+            }
+          }
+        }
+      }
+      return _any;
+    };
+  };
+
+  matchers.nod = function(string) {
+    var query, regexp, selectors, _ref;
+    if (string.indexOf(":") > 0) {
+      _ref = string.split(":"), selectors = _ref[0], query = _ref[1];
+      regexp = new RegExp(query, 'i');
+      selectors = selectors.split(',');
+      return function(item) {
+        var selector, _i, _len, _ref1;
+        for (_i = 0, _len = selectors.length; _i < _len; _i++) {
+          selector = selectors[_i];
+          if (!!((_ref1 = item.find(selector)) != null ? _ref1.text().match(regexp) : void 0)) {
+            return true;
+          }
+        }
+        return false;
+      };
+    } else {
+      regexp = new RegExp(string, 'i');
+      return function(item) {
+        return !!item.text().match(regexp);
+      };
+    }
+  };
+
+  matchers.object_ext = function(obj, all) {
+    var key, matchers, matches, val;
+    if (all == null) {
+      all = true;
+    }
+    matchers = {};
+    for (key in obj) {
+      if (!__hasProp.call(obj, key)) continue;
+      val = obj[key];
+      if (typeof val === 'object' && !(Array.isArray(val))) {
+        matchers[key] = this.object_ext(val, all);
+      } else {
+        if ((matches = key.match(_key_operand))) {
+          matchers[matches[1]] = _operands[matches[2]](val);
+        } else {
+          matchers[key] = val;
+        }
+      }
+    }
+    return this.object(matchers, all);
+  };
+
+  return matchers;
+
+})();
+
+
+
+},{"../pi":44,"./base":45}],50:[function(require,module,exports){
 'use strict';
 var pi, utils, _formatter, _pad, _reg, _splitter;
 
@@ -5623,7 +5710,7 @@ utils.time = {
 
 
 
-},{"../pi":44,"./base":45}],50:[function(require,module,exports){
+},{"../pi":44,"./base":45}],51:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -5710,7 +5797,7 @@ pi.net.IframeUpload = (function() {
 
 
 
-},{"../core":42,"./net":52}],51:[function(require,module,exports){
+},{"../core":42,"./net":53}],52:[function(require,module,exports){
 'use strict';
 require('./net');
 
@@ -5718,7 +5805,7 @@ require('./iframe.upload');
 
 
 
-},{"./iframe.upload":50,"./net":52}],52:[function(require,module,exports){
+},{"./iframe.upload":51,"./net":53}],53:[function(require,module,exports){
 'use strict';
 var method, pi, utils, _i, _len, _ref,
   __hasProp = {}.hasOwnProperty;
@@ -5963,7 +6050,7 @@ for (_i = 0, _len = _ref.length; _i < _len; _i++) {
 
 
 
-},{"../core":42}],53:[function(require,module,exports){
+},{"../core":42}],54:[function(require,module,exports){
 'use strict'
 window.pi = require('./core')
 require('./components')
@@ -5972,13 +6059,13 @@ require('./resources')
 require('./controllers')
 require('./views')
 module.exports = window.pi
-},{"./components":15,"./controllers":30,"./core":42,"./net":51,"./resources":68,"./views":73}],54:[function(require,module,exports){
+},{"./components":15,"./controllers":30,"./core":42,"./net":52,"./resources":69,"./views":74}],55:[function(require,module,exports){
 'use strict';
 require('./selectable');
 
 
 
-},{"./selectable":56}],55:[function(require,module,exports){
+},{"./selectable":57}],56:[function(require,module,exports){
 'use strict';
 var pi, utils, _renderer_reg,
   __hasProp = {}.hasOwnProperty,
@@ -6051,7 +6138,7 @@ pi.Base.Renderable = (function(_super) {
 
 
 
-},{"../../components/pieces":16,"../../core":42,"../plugin":66}],56:[function(require,module,exports){
+},{"../../components/pieces":16,"../../core":42,"../plugin":67}],57:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -6124,7 +6211,7 @@ pi.Base.Selectable = (function(_super) {
 
 
 
-},{"../../components/pieces":16,"../../core":42,"../plugin":66}],57:[function(require,module,exports){
+},{"../../components/pieces":16,"../../core":42,"../plugin":67}],58:[function(require,module,exports){
 'use strict';
 require('./plugin');
 
@@ -6134,10 +6221,9 @@ require('./list');
 
 
 
-},{"./base":54,"./list":59,"./plugin":66}],58:[function(require,module,exports){
+},{"./base":55,"./list":60,"./plugin":67}],59:[function(require,module,exports){
 'use strict';
-var pi, utils, _is_continuation, _key_operand, _matcher, _operands,
-  __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+var pi, utils, _is_continuation,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -6148,57 +6234,6 @@ require('../../components/base/list');
 require('../plugin');
 
 utils = pi.utils;
-
-_operands = {
-  "?": function(values) {
-    return function(value) {
-      return __indexOf.call(values, value) >= 0;
-    };
-  },
-  "?&": function(values) {
-    return function(value) {
-      var v, _i, _len;
-      for (_i = 0, _len = values.length; _i < _len; _i++) {
-        v = values[_i];
-        if (!(__indexOf.call(value, v) >= 0)) {
-          return false;
-        }
-      }
-      return true;
-    };
-  },
-  ">": function(val) {
-    return function(value) {
-      return value >= val;
-    };
-  },
-  "<": function(val) {
-    return function(value) {
-      return value <= val;
-    };
-  }
-};
-
-_key_operand = /^([\w\d_]+)(\?&|>|<|\?)$/;
-
-_matcher = function(params) {
-  var key, matches, obj, val;
-  obj = {};
-  for (key in params) {
-    if (!__hasProp.call(params, key)) continue;
-    val = params[key];
-    if (typeof val === 'object' && !(Array.isArray(val))) {
-      obj[key] = _matcher(val);
-    } else {
-      if ((matches = key.match(_key_operand))) {
-        obj[matches[1]] = _operands[matches[2]](val);
-      } else {
-        obj[key] = val;
-      }
-    }
-  }
-  return pi.List.object_matcher(obj);
-};
 
 _is_continuation = function(prev, params) {
   var key, val;
@@ -6294,7 +6329,7 @@ pi.List.Filterable = (function(_super) {
     }
     scope = _is_continuation(this._prevf, params) ? this.list.items.slice() : this.all_items();
     this._prevf = params;
-    this.matcher = _matcher({
+    this.matcher = utils.matchers.object_ext({
       record: params
     });
     _buffer = (function() {
@@ -6318,7 +6353,7 @@ pi.List.Filterable = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66}],59:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67}],60:[function(require,module,exports){
 'use strict';
 require('./selectable');
 
@@ -6336,7 +6371,7 @@ require('./nested_select');
 
 
 
-},{"./filterable":58,"./move_select":60,"./nested_select":61,"./scrollend":62,"./searchable":63,"./selectable":64,"./sortable":65}],60:[function(require,module,exports){
+},{"./filterable":59,"./move_select":61,"./nested_select":62,"./scrollend":63,"./searchable":64,"./selectable":65,"./sortable":66}],61:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -6526,9 +6561,9 @@ pi.List.MoveSelect = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66,"./selectable":64}],61:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67,"./selectable":65}],62:[function(require,module,exports){
 'use strict';
-var pi, utils,
+var pi, utils, _null,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -6542,6 +6577,8 @@ require('./selectable');
 
 utils = pi.utils;
 
+_null = function() {};
+
 pi.List.NestedSelect = (function(_super) {
   __extends(NestedSelect, _super);
 
@@ -6554,20 +6591,22 @@ pi.List.NestedSelect = (function(_super) {
   NestedSelect.prototype.initialize = function(list) {
     this.list = list;
     NestedSelect.__super__.initialize.apply(this, arguments);
-    if (!this.list.has_selectable) {
-      this.list.attach_plugin(pi.List.Selectable);
-    }
-    this.selectable = this.list.selectable;
+    this.selectable = this.list.selectable || {
+      select_all: _null,
+      clear_selection: _null
+    };
     this.list.delegate_to(this, 'clear_selection', 'select_all', 'selected');
     this.list.on('selection_cleared', (function(_this) {
       return function(e) {
         if (e.target !== _this.list) {
           e.cancel();
-          return _this.selectable._check_selected();
+          return _this._check_selected();
         }
       };
     })(this));
   };
+
+  NestedSelect.prototype._check_selected = pi.List.Selectable.prototype._check_selected;
 
   NestedSelect.prototype.clear_selection = function(silent) {
     var item, _i, _len, _ref;
@@ -6629,7 +6668,7 @@ pi.List.NestedSelect = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66,"./selectable":64}],62:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67,"./selectable":65}],63:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -6711,7 +6750,7 @@ pi.List.ScrollEnd = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66}],63:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67}],64:[function(require,module,exports){
 'use strict';
 var pi, utils, _clear_mark_regexp, _is_continuation, _selector_regexp,
   __hasProp = {}.hasOwnProperty,
@@ -6795,8 +6834,10 @@ pi.List.Searchable = (function(_super) {
   };
 
   Searchable.prototype._matcher_from_scope = function(scope) {
-    return this.matcher_factory = scope == null ? pi.List.string_matcher : function(value) {
-      return pi.List.string_matcher(scope + ':' + value);
+    return this.matcher_factory = scope == null ? function(value) {
+      return utils.matchers.nod(value);
+    } : function(value) {
+      return utils.matchers.nod(scope + ':' + value);
     };
   };
 
@@ -6920,7 +6961,7 @@ pi.List.Searchable = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66}],64:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67}],65:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -6985,18 +7026,16 @@ pi.List.Selectable = (function(_super) {
           _this.list.trigger('selected', [e.data.item]);
         } else if (_this.is_check) {
           _this.list.toggle_select(e.data.item);
-          if (_this.list.selected().length) {
-            _this.list.trigger('selected', _this.selected());
-          } else {
-            _this.list.trigger('selection_cleared');
-          }
+          _this._check_selected();
         }
       };
     })(this));
   };
 
   Selectable.prototype._check_selected = function() {
-    if (!this.list.selected().length) {
+    if (this.list.selected().length) {
+      return this.list.trigger('selected', this.selected());
+    } else {
       return this.list.trigger('selection_cleared');
     }
   };
@@ -7100,7 +7139,7 @@ pi.List.Selectable = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66}],65:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67}],66:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7216,7 +7255,7 @@ pi.List.Sortable = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../plugin":66}],66:[function(require,module,exports){
+},{"../../components/base/list":6,"../../core":42,"../plugin":67}],67:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7258,7 +7297,7 @@ pi.Plugin = (function(_super) {
 
 
 
-},{"../core":42}],67:[function(require,module,exports){
+},{"../core":42}],68:[function(require,module,exports){
 'use strict';
 var pi, utils, _singular, _wrap,
   __hasProp = {}.hasOwnProperty,
@@ -7383,9 +7422,8 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.trigger = function(event, data) {
-    return pi.event.trigger("" + this.resources_name + "_update", utils.merge(data, {
-      type: event
-    }));
+    data.type = event;
+    return pi.event.trigger("" + this.resources_name + "_update", data);
   };
 
   Base.off = function(callback) {
@@ -7400,8 +7438,22 @@ pi.resources.Base = (function(_super) {
     return this.__all__.slice();
   };
 
+  Base.where = function(params) {
+    var el, _i, _len, _ref, _results;
+    _ref = this.__all__;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      el = _ref[_i];
+      if (utils.matchers.object_ext(params)(el)) {
+        _results.push(el);
+      }
+    }
+    return _results;
+  };
+
   function Base(data) {
     Base.__super__.constructor.apply(this, arguments);
+    this._changes = {};
     this.set(data, true);
   }
 
@@ -7424,38 +7476,34 @@ pi.resources.Base = (function(_super) {
       val = params[key];
       if (this[key] !== val) {
         _changed = true;
+        this._changes[key] = {
+          old_val: this[key],
+          val: val
+        };
+        this[key] = val;
       }
-      this[key] = val;
     }
     if (_changed && !silent) {
-      this.trigger('update');
+      this.trigger('update', this._changes);
     }
     return this;
   };
 
-  Base.prototype.listen = function(callback) {
-    return pi.event.on("" + this.constructor.resources_name + "_update", callback, null, (function(_this) {
-      return function(e) {
-        return e.data[_this.constructor.resource_name].id === _this.id;
-      };
-    })(this));
-  };
-
-  Base.prototype.off = function(callback) {
-    return pi.event.off("" + this.constructor.resources_name + "_update", callback);
-  };
-
-  Base.prototype.trigger = function(e) {
+  Base.prototype.trigger = function(e, data, bubbles) {
+    if (bubbles == null) {
+      bubbles = true;
+    }
+    Base.__super__.trigger.apply(this, arguments);
     return this.constructor.trigger(e, _wrap(this));
   };
 
   return Base;
 
-})(pi.Core);
+})(pi.EventDispatcher);
 
 
 
-},{"../core":42}],68:[function(require,module,exports){
+},{"../core":42}],69:[function(require,module,exports){
 'use strict';
 require('./base');
 
@@ -7465,13 +7513,13 @@ require('./modules');
 
 
 
-},{"./base":67,"./modules":69,"./rest":71}],69:[function(require,module,exports){
+},{"./base":68,"./modules":70,"./rest":72}],70:[function(require,module,exports){
 'use strict';
 require('./query');
 
 
 
-},{"./query":70}],70:[function(require,module,exports){
+},{"./query":71}],71:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -7502,7 +7550,7 @@ pi.resources.Query = (function() {
 
 
 
-},{"../../core":42,"../rest":71}],71:[function(require,module,exports){
+},{"../../core":42,"../rest":72}],72:[function(require,module,exports){
 'use strict';
 var pi, utils, _double_slashes_reg, _path_reg, _set_param, _tailing_slash_reg,
   __hasProp = {}.hasOwnProperty,
@@ -7569,10 +7617,6 @@ _set_param = function(data, from, param) {
 
 pi.resources.REST = (function(_super) {
   __extends(REST, _super);
-
-  function REST() {
-    return REST.__super__.constructor.apply(this, arguments);
-  }
 
   REST._rscope = "/:path";
 
@@ -7769,6 +7813,11 @@ pi.resources.REST = (function(_super) {
     return el.save();
   };
 
+  function REST(data) {
+    REST.__super__.constructor.apply(this, arguments);
+    this._snapshot = data;
+  }
+
   REST.prototype.on_destroy = function(data) {
     this.constructor.remove(this);
     return data;
@@ -7778,7 +7827,9 @@ pi.resources.REST = (function(_super) {
     var params;
     params = data[this.constructor.resource_name];
     if ((params != null) && params.id === this.id) {
-      return this.set(params);
+      this.set(params);
+      this.commit();
+      return this;
     }
   };
 
@@ -7787,6 +7838,7 @@ pi.resources.REST = (function(_super) {
     params = data[this.constructor.resource_name];
     if (params != null) {
       this.set(params, true);
+      this.commit();
       this._persisted = true;
       this.constructor.add(this);
       this.trigger('create');
@@ -7809,6 +7861,26 @@ pi.resources.REST = (function(_super) {
     }
   };
 
+  REST.prototype.commit = function() {
+    var key, param, _i, _len, _ref;
+    _ref = this._changes;
+    for (param = _i = 0, _len = _ref.length; _i < _len; param = ++_i) {
+      key = _ref[param];
+      this._snapshot[key] = param.val;
+    }
+    this._changes = {};
+    return this._snapshot;
+  };
+
+  REST.prototype.rollback = function() {
+    var key, param, _i, _len, _ref;
+    _ref = this._changes;
+    for (param = _i = 0, _len = _ref.length; _i < _len; param = ++_i) {
+      key = _ref[param];
+      this[key] = this._snapshot[key];
+    }
+  };
+
   REST.register_callback('save');
 
   REST.prototype._wrap = function(attributes) {
@@ -7824,7 +7896,7 @@ pi.resources.REST = (function(_super) {
 
 
 
-},{"../core":42,"./base":67}],72:[function(require,module,exports){
+},{"../core":42,"./base":68}],73:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7888,7 +7960,7 @@ pi.BaseView = (function(_super) {
 
 
 
-},{"../components/pieces":16,"../core":42}],73:[function(require,module,exports){
+},{"../components/pieces":16,"../core":42}],74:[function(require,module,exports){
 'use strict';
 require('./base');
 
@@ -7900,7 +7972,7 @@ require('./list.view');
 
 
 
-},{"./base":72,"./list.view":74,"./modules":75,"./plugins":79}],74:[function(require,module,exports){
+},{"./base":73,"./list.view":75,"./modules":76,"./plugins":80}],75:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7935,11 +8007,11 @@ pi.ListView = (function(_super) {
 
 
 
-},{"../core":42,"./base":72}],75:[function(require,module,exports){
+},{"../core":42,"./base":73}],76:[function(require,module,exports){
 'use strict'
 require('./listable')
 require('./loadable')
-},{"./listable":76,"./loadable":77}],76:[function(require,module,exports){
+},{"./listable":77,"./loadable":78}],77:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8025,7 +8097,7 @@ pi.BaseView.Listable = (function() {
 
 
 
-},{"../../core":42,"./../base":72}],77:[function(require,module,exports){
+},{"../../core":42,"./../base":73}],78:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8058,7 +8130,7 @@ pi.BaseView.Loadable = (function() {
 
 
 
-},{"../../core":42,"./../base":72}],78:[function(require,module,exports){
+},{"../../core":42,"./../base":73}],79:[function(require,module,exports){
 'use strict';
 var pi, utils, _app_rxp, _finder_rxp,
   __hasProp = {}.hasOwnProperty,
@@ -8124,7 +8196,7 @@ pi.Base.Restful = (function(_super) {
       this.resource.off(this.resource_update());
     }
     this.resource = resource;
-    this.resource.listen(this.resource_update());
+    this.resource.on('update', this.resource_update());
     if (render) {
       return this.target.render(resource);
     }
@@ -8133,15 +8205,10 @@ pi.Base.Restful = (function(_super) {
   Restful.prototype.resource_update = function() {
     return this._resource_update || (this._resource_update = (function(_this) {
       return function(e) {
-        var _ref;
-        utils.debug('Restful component event', e.data.type);
-        return (_ref = _this["on_" + e.data.type]) != null ? _ref.call(_this, e.data[_this.resource.constructor.resource_name]) : void 0;
+        utils.debug('Restful component event');
+        return _this.on_update(e.currentTarget);
       };
     })(this));
-  };
-
-  Restful.prototype.on_destroy = function(data) {
-    return this.target.remove();
   };
 
   Restful.prototype.on_update = function(data) {
@@ -8154,7 +8221,7 @@ pi.Base.Restful = (function(_super) {
 
 
 
-},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":66}],79:[function(require,module,exports){
+},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":67}],80:[function(require,module,exports){
 'use strict';
 require('./base.restful');
 
@@ -8162,7 +8229,7 @@ require('./list.restful');
 
 
 
-},{"./base.restful":78,"./list.restful":80}],80:[function(require,module,exports){
+},{"./base.restful":79,"./list.restful":81}],81:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -8270,4 +8337,4 @@ pi.List.Restful = (function(_super) {
 
 
 
-},{"../../components/base/list":6,"../../core":42,"../../plugins/plugin":66}]},{},[53]);
+},{"../../components/base/list":6,"../../core":42,"../../plugins/plugin":67}]},{},[54]);
