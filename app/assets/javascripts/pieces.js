@@ -5487,7 +5487,11 @@ pi.utils.matchers = (function() {
     }
     _fn = (function(_this) {
       return function(key, val) {
-        if (typeof val === "object") {
+        if (val == null) {
+          return obj[key] = function(value) {
+            return value == null;
+          };
+        } else if (typeof val === "object") {
           return obj[key] = _this.object(val, all);
         } else if (!(typeof val === 'function')) {
           return obj[key] = function(value) {
@@ -5505,16 +5509,14 @@ pi.utils.matchers = (function() {
       _any = false;
       for (key in obj) {
         matcher = obj[key];
-        if (item[key] != null) {
-          if (matcher(item[key])) {
-            _any = true;
-            if (!all) {
-              return _any;
-            }
-          } else {
-            if (all) {
-              return false;
-            }
+        if (matcher(item[key])) {
+          _any = true;
+          if (!all) {
+            return _any;
+          }
+        } else {
+          if (all) {
+            return false;
           }
         }
       }
@@ -5555,7 +5557,7 @@ pi.utils.matchers = (function() {
     for (key in obj) {
       if (!__hasProp.call(obj, key)) continue;
       val = obj[key];
-      if (typeof val === 'object' && !(Array.isArray(val))) {
+      if ((val != null) && (typeof val === 'object' && !(Array.isArray(val)))) {
         matchers[key] = this.object_ext(val, all);
       } else {
         if ((matches = key.match(_key_operand))) {
@@ -7417,8 +7419,8 @@ pi.resources.Base = (function(_super) {
     return false;
   };
 
-  Base.listen = function(callback) {
-    return pi.event.on("" + this.resources_name + "_update", callback);
+  Base.listen = function(callback, filter) {
+    return pi.event.on("" + this.resources_name + "_update", callback, null, filter);
   };
 
   Base.trigger = function(event, data) {
@@ -8231,7 +8233,7 @@ require('./list.restful');
 
 },{"./base.restful":79,"./list.restful":81}],81:[function(require,module,exports){
 'use strict';
-var pi, utils,
+var pi, utils, _where_rxp,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -8243,6 +8245,8 @@ require('../../components/base/list');
 
 utils = pi.utils;
 
+_where_rxp = /^(\w+)\.where\(([\w\s\,\:]+)\)$/i;
+
 pi.List.Restful = (function(_super) {
   __extends(Restful, _super);
 
@@ -8253,18 +8257,31 @@ pi.List.Restful = (function(_super) {
   Restful.prototype.id = 'restful';
 
   Restful.prototype.initialize = function(list) {
-    var resources;
+    var key, matches, param, params, resources, rest, val, _i, _len, _ref, _ref1;
     this.list = list;
     Restful.__super__.initialize.apply(this, arguments);
     this.items_by_id = {};
-    if ((this.list.options.rest != null) && ($r[utils.camelCase(this.list.options.rest)] != null)) {
-      resources = $r[utils.camelCase(this.list.options.rest)];
-      this.bind(resources, this.list.options.load_rest);
+    if ((rest = this.list.options.rest) != null) {
+      if ((matches = rest.match(_where_rxp))) {
+        rest = matches[1];
+        params = {};
+        _ref = matches[2].split(/\s*\,\s*/);
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          param = _ref[_i];
+          _ref1 = param.split(/\s*\:\s*/), key = _ref1[0], val = _ref1[1];
+          params[key] = utils.serialize(val);
+        }
+      }
+      if ($r[utils.camelCase(rest)] != null) {
+        resources = $r[utils.camelCase(rest)];
+        this.bind(resources, this.list.options.load_rest, params);
+      }
     }
     this.list.delegate_to(this, 'find_by_id');
   };
 
-  Restful.prototype.bind = function(resources, load) {
+  Restful.prototype.bind = function(resources, load, params) {
+    var filter, matcher;
     if (load == null) {
       load = false;
     }
@@ -8272,9 +8289,21 @@ pi.List.Restful = (function(_super) {
       this.resources.off(this.resources_update());
     }
     this.resources = resources;
-    this.resources.listen(this.resource_update());
+    if (params != null) {
+      matcher = utils.matchers.object(params);
+      filter = (function(_this) {
+        return function(e) {
+          return matcher(e.data[_this.resources.resource_name]);
+        };
+      })(this);
+    }
+    this.resources.listen(this.resource_update(), filter);
     if (load) {
-      return this.load(resources.all());
+      if (params != null) {
+        return this.load(resources.where(params));
+      } else {
+        return this.load(resources.all());
+      }
     }
   };
 
