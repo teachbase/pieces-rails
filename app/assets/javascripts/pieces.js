@@ -7732,6 +7732,7 @@ pi.resources.REST = (function(_super) {
 
   REST._interpolate_path = function(path, params) {
     var flag, part, path_parts, _i, _len;
+    path = this._rscope.replace(":path", path).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
     path_parts = path.split(_path_reg);
     path = "";
     flag = false;
@@ -7744,7 +7745,7 @@ pi.resources.REST = (function(_super) {
       }
       flag = !flag;
     }
-    return (this._rscope.replace(":path", path)).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
+    return path;
   };
 
   REST.error = function(action, message) {
