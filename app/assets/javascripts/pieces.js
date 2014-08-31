@@ -334,7 +334,7 @@ pi.List = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    new_item = this._renderer.render(data);
+    new_item = this._renderer.render(data, false);
     utils.extend(item.record, new_item.record, true);
     item.remove_children();
     item.html(new_item.html());
@@ -2045,16 +2045,21 @@ pi.Renderers = {};
 pi.Renderers.Base = (function() {
   function Base() {}
 
-  Base.prototype.render = function(nod) {
+  Base.prototype.render = function(nod, piecified) {
     if (!(nod instanceof pi.Nod)) {
       return;
     }
-    return this._render(nod, nod.data());
+    return this._render(nod, nod.data(), piecified);
   };
 
-  Base.prototype._render = function(nod, data) {
+  Base.prototype._render = function(nod, data, piecified) {
+    if (piecified == null) {
+      piecified = true;
+    }
     if (!(nod instanceof pi.Base)) {
-      nod = nod.piecify();
+      if (piecified) {
+        nod = nod.piecify();
+      }
     }
     nod.record = data;
     return nod;
@@ -2095,13 +2100,13 @@ pi.Renderers.Jst = (function(_super) {
     this.templater = JST[template];
   }
 
-  Jst.prototype.render = function(data) {
+  Jst.prototype.render = function(data, piecified) {
     var nod;
     if (data instanceof pi.Nod) {
       return Jst.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(this.templater(data));
-      return this._render(nod, data);
+      return this._render(nod, data, piecified);
     }
   };
 
@@ -2139,13 +2144,13 @@ pi.Renderers.Mustache = (function(_super) {
     window.Mustache.parse(this.template);
   }
 
-  Mustache.prototype.render = function(data) {
+  Mustache.prototype.render = function(data, piecified) {
     var nod;
     if (data instanceof pi.Nod) {
       return Mustache.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(window.Mustache.render(this.template, data));
-      return this._render(nod, data);
+      return this._render(nod, data, piecified);
     }
   };
 
@@ -5489,7 +5494,7 @@ pi.utils.matchers = (function() {
       return function(key, val) {
         if (val == null) {
           return obj[key] = function(value) {
-            return value == null;
+            return !value;
           };
         } else if (typeof val === "object") {
           return obj[key] = _this.object(val, all);
@@ -6598,7 +6603,8 @@ pi.List.NestedSelect = (function(_super) {
       clear_selection: _null
     };
     this.list.delegate_to(this, 'clear_selection', 'select_all', 'selected');
-    this.list.on('selection_cleared', (function(_this) {
+    this.type(this.list.options.nested_select_type || "");
+    this.list.on('selection_cleared,selected', (function(_this) {
       return function(e) {
         if (e.target !== _this.list) {
           e.cancel();
@@ -6610,19 +6616,21 @@ pi.List.NestedSelect = (function(_super) {
 
   NestedSelect.prototype._check_selected = pi.List.Selectable.prototype._check_selected;
 
+  NestedSelect.prototype.type = function(value) {
+    return this.is_radio = !!value.match('radio');
+  };
+
   NestedSelect.prototype.clear_selection = function(silent) {
-    var item, _i, _len, _ref;
+    var item, _base, _i, _len, _ref;
     if (silent == null) {
       silent = false;
     }
     this.selectable.clear_selection();
-    _ref = this.list.items;
+    _ref = this.list.find_cut('.pi-list');
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      if (item instanceof pi.List) {
-        if (typeof item.clear_selection === "function") {
-          item.clear_selection();
-        }
+      if (typeof (_base = item._nod).clear_selection === "function") {
+        _base.clear_selection();
       }
     }
     if (!silent) {
@@ -6631,15 +6639,13 @@ pi.List.NestedSelect = (function(_super) {
   };
 
   NestedSelect.prototype.select_all = function() {
-    var item, _i, _len, _ref, _selected;
+    var item, _base, _i, _len, _ref, _selected;
     this.selectable.select_all(true);
-    _ref = this.list.items;
+    _ref = this.list.find_cut('.pi-list');
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      if (item instanceof pi.List) {
-        if (typeof item.select_all === "function") {
-          item.select_all(true);
-        }
+      if (typeof (_base = item._nod).select_all === "function") {
+        _base.select_all(true);
       }
     }
     _selected = this.selected();
@@ -6649,7 +6655,7 @@ pi.List.NestedSelect = (function(_super) {
   };
 
   NestedSelect.prototype.selected = function() {
-    var item, _i, _len, _ref, _selected;
+    var item, sublist, _i, _len, _ref, _selected;
     _selected = [];
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -6659,6 +6665,8 @@ pi.List.NestedSelect = (function(_super) {
       }
       if (item instanceof pi.List) {
         _selected = _selected.concat((typeof item.selected === "function" ? item.selected() : void 0) || []);
+      } else if ((sublist = item.find('.pi-list'))) {
+        _selected = _selected.concat((typeof sublist.selected === "function" ? sublist.selected() : void 0) || []);
       }
     }
     return _selected;
@@ -7025,18 +7033,19 @@ pi.List.Selectable = (function(_super) {
         if (_this.is_radio && !e.data.item.__selected__) {
           _this.clear_selection(true);
           _this.list.select_item(e.data.item);
-          _this.list.trigger('selected', [e.data.item]);
         } else if (_this.is_check) {
           _this.list.toggle_select(e.data.item);
-          _this._check_selected();
+        } else {
+          return;
         }
+        _this._check_selected();
       };
     })(this));
   };
 
   Selectable.prototype._check_selected = function() {
     if (this.list.selected().length) {
-      return this.list.trigger('selected', this.selected());
+      return this.list.trigger('selected', this.list.selected());
     } else {
       return this.list.trigger('selection_cleared');
     }
