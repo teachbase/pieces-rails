@@ -5232,6 +5232,54 @@ pi.utils = (function() {
     return target;
   };
 
+  utils.extract = function(data, source, param) {
+    var el, key, p, vals, _fn, _i, _j, _len, _len1;
+    if (source == null) {
+      return;
+    }
+    if (Array.isArray(source)) {
+      _fn = (function(_this) {
+        return function(el) {
+          var el_data;
+          el_data = {};
+          _this.extract(el_data, el, param);
+          return data.push(el_data);
+        };
+      })(this);
+      for (_i = 0, _len = source.length; _i < _len; _i++) {
+        el = source[_i];
+        _fn(el);
+      }
+      data;
+    } else {
+      if (typeof param === 'string') {
+        if (source[param] != null) {
+          data[param] = source[param];
+        }
+      } else if (Array.isArray(param)) {
+        for (_j = 0, _len1 = param.length; _j < _len1; _j++) {
+          p = param[_j];
+          this.extract(data, source, p);
+        }
+      } else {
+        for (key in param) {
+          if (!__hasProp.call(param, key)) continue;
+          vals = param[key];
+          if (source[key] == null) {
+            return;
+          }
+          if (Array.isArray(source[key])) {
+            data[key] = [];
+          } else {
+            data[key] = {};
+          }
+          this.extract(data[key], source[key], vals);
+        }
+      }
+    }
+    return data;
+  };
+
   utils.uniq = function(arr) {
     var el, res, _i, _len;
     res = [];
@@ -5930,7 +5978,7 @@ pi.Net = (function() {
       options = {};
     }
     return new Promise((function(_this) {
-      return function(resolve, reject, progress) {
+      return function(resolve, reject) {
         var key, q, req, use_json, value, _headers;
         req = xhr || new XMLHttpRequest();
         use_json = options.json != null ? options.json : _this.use_json;
@@ -5964,12 +6012,10 @@ pi.Net = (function() {
           req.setRequestHeader(key, value);
         }
         _headers = null;
-        if (typeof progress === 'function') {
+        if (typeof options.progress === 'function') {
           req.upload.onprogress = function(event) {
             value = event.lengthComputable ? event.loaded * 100 / event.total : 0;
-            if (progress != null) {
-              return progress(Math.round(value));
-            }
+            return options.progress(Math.round(value));
           };
         }
         req.onreadystatechange = function() {
@@ -7570,7 +7616,7 @@ pi.resources.Query = (function() {
 
 },{"../../core":42,"../rest":72}],72:[function(require,module,exports){
 'use strict';
-var pi, utils, _double_slashes_reg, _path_reg, _set_param, _tailing_slash_reg,
+var pi, utils, _double_slashes_reg, _path_reg, _tailing_slash_reg,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   __slice = [].slice;
@@ -7587,52 +7633,6 @@ _double_slashes_reg = /\/\//;
 
 _tailing_slash_reg = /\/$/;
 
-_set_param = function(data, from, param) {
-  var el, key, p, vals, _fn, _i, _j, _len, _len1;
-  if (from == null) {
-    return;
-  }
-  if (Array.isArray(from)) {
-    _fn = function(el) {
-      var el_data;
-      el_data = {};
-      _set_param(el_data, el, param);
-      return data.push(el_data);
-    };
-    for (_i = 0, _len = from.length; _i < _len; _i++) {
-      el = from[_i];
-      _fn(el);
-    }
-    data;
-  } else {
-    if (typeof param === 'string') {
-      if (from[param] != null) {
-        data[param] = from[param];
-      }
-    } else if (Array.isArray(param)) {
-      for (_j = 0, _len1 = param.length; _j < _len1; _j++) {
-        p = param[_j];
-        _set_param(data, from, p);
-      }
-    } else {
-      for (key in param) {
-        if (!__hasProp.call(param, key)) continue;
-        vals = param[key];
-        if (from[key] == null) {
-          return;
-        }
-        if (Array.isArray(from[key])) {
-          data[key] = [];
-        } else {
-          data[key] = {};
-        }
-        _set_param(data[key], from[key], vals);
-      }
-    }
-  }
-  return data;
-};
-
 pi.resources.REST = (function(_super) {
   __extends(REST, _super);
 
@@ -7647,7 +7647,7 @@ pi.resources.REST = (function(_super) {
       args.push('id');
     }
     return this.prototype.attributes = function() {
-      return this.__attributes__ || (this.__attributes__ = _set_param({}, this, args));
+      return this.__attributes__ || (this.__attributes__ = utils.extract({}, this, args));
     };
   };
 
@@ -7755,7 +7755,7 @@ pi.resources.REST = (function(_super) {
     for (_i = 0, _len = path_parts.length; _i < _len; _i++) {
       part = path_parts[_i];
       if (flag) {
-        val = params[part] || (target != null ? target[part] : void 0);
+        val = params[part] != null ? params[part] : target != null ? target[part] : void 0;
         if (val == null) {
           throw Error("undefined param: " + part);
         }
@@ -7938,8 +7938,9 @@ utils = pi.utils;
 pi.resources.ViewItem = (function(_super) {
   __extends(ViewItem, _super);
 
-  function ViewItem(view, data) {
+  function ViewItem(view, data, options) {
     this.view = view;
+    this.options = options != null ? options : {};
     ViewItem.__super__.constructor.apply(this, arguments);
     this._changes = {};
     this.set(data, true);
@@ -7955,6 +7956,14 @@ pi.resources.ViewItem = (function(_super) {
     return this.view.trigger(e, this.view._wrap(this));
   };
 
+  ViewItem.prototype.attributes = function() {
+    if (this.options.params != null) {
+      return utils.extract({}, this, this.options.params);
+    } else {
+      return pi.resources.Base.prototype.attributes.call(this);
+    }
+  };
+
   return ViewItem;
 
 })(pi.EventDispatcher);
@@ -7962,8 +7971,9 @@ pi.resources.ViewItem = (function(_super) {
 pi.resources.View = (function(_super) {
   __extends(View, _super);
 
-  function View(resources, scope) {
+  function View(resources, scope, options) {
     this.resources = resources;
+    this.options = options != null ? options : {};
     View.__super__.constructor.apply(this, arguments);
     this.__all_by_id__ = {};
     this.__all__ = [];
@@ -8015,7 +8025,7 @@ pi.resources.View = (function(_super) {
       if (data instanceof pi.resources.Base) {
         data = data.attributes();
       }
-      el = new pi.resources.ViewItem(this, data);
+      el = new pi.resources.ViewItem(this, data, this.options);
       if (el.id && add) {
         this.add(el);
         if (!silent) {
@@ -8037,6 +8047,17 @@ pi.resources.View = (function(_super) {
     } else {
       return el;
     }
+  };
+
+  View.prototype.serialize = function() {
+    var el, res, _i, _len, _ref;
+    res = [];
+    _ref = this.all();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      el = _ref[_i];
+      res.push(el.attributes());
+    }
+    return res;
   };
 
   View.prototype.listen = function(callback) {
