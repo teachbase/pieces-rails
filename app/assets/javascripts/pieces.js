@@ -334,7 +334,7 @@ pi.List = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    new_item = this._renderer.render(data, false);
+    new_item = this._renderer.render(data);
     utils.extend(item.record, new_item.record, true);
     item.remove_children();
     item.html(new_item.html());
@@ -2045,21 +2045,16 @@ pi.Renderers = {};
 pi.Renderers.Base = (function() {
   function Base() {}
 
-  Base.prototype.render = function(nod, piecified) {
+  Base.prototype.render = function(nod) {
     if (!(nod instanceof pi.Nod)) {
       return;
     }
-    return this._render(nod, nod.data(), piecified);
+    return this._render(nod, nod.data());
   };
 
-  Base.prototype._render = function(nod, data, piecified) {
-    if (piecified == null) {
-      piecified = true;
-    }
+  Base.prototype._render = function(nod, data) {
     if (!(nod instanceof pi.Base)) {
-      if (piecified) {
-        nod = nod.piecify();
-      }
+      nod = nod.piecify();
     }
     nod.record = data;
     return nod;
@@ -2100,13 +2095,13 @@ pi.Renderers.Jst = (function(_super) {
     this.templater = JST[template];
   }
 
-  Jst.prototype.render = function(data, piecified) {
+  Jst.prototype.render = function(data) {
     var nod;
     if (data instanceof pi.Nod) {
       return Jst.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(this.templater(data));
-      return this._render(nod, data, piecified);
+      return this._render(nod, data);
     }
   };
 
@@ -2144,13 +2139,13 @@ pi.Renderers.Mustache = (function(_super) {
     window.Mustache.parse(this.template);
   }
 
-  Mustache.prototype.render = function(data, piecified) {
+  Mustache.prototype.render = function(data) {
     var nod;
     if (data instanceof pi.Nod) {
       return Mustache.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(window.Mustache.render(this.template, data));
-      return this._render(nod, data, piecified);
+      return this._render(nod, data);
     }
   };
 
@@ -2259,7 +2254,9 @@ pi.SelectInput = (function(_super) {
         return _this.dropdown.hide();
       };
     })(this));
-    if (this.placeholder.text() === '') {
+    if (this.options.default_value != null) {
+      return this.value(this.options.default_value);
+    } else if (this.placeholder.text() === '') {
       return this.placeholder.text(this.placeholder.options.placeholder);
     }
   };
@@ -2287,8 +2284,12 @@ pi.SelectInput = (function(_super) {
 
   SelectInput.prototype.clear = function() {
     this.dropdown.clear_selection(true);
-    this.placeholder.text(this.placeholder.options.placeholder);
-    return SelectInput.__super__.clear.apply(this, arguments);
+    if (this.options.default_value != null) {
+      return this.value(this.options.default_value);
+    } else {
+      this.placeholder.text(this.placeholder.options.placeholder);
+      return SelectInput.__super__.clear.apply(this, arguments);
+    }
   };
 
   return SelectInput;
@@ -5494,7 +5495,7 @@ pi.utils.matchers = (function() {
       return function(key, val) {
         if (val == null) {
           return obj[key] = function(value) {
-            return !value;
+            return value == null;
           };
         } else if (typeof val === "object") {
           return obj[key] = _this.object(val, all);
@@ -6066,7 +6067,7 @@ require('./resources')
 require('./controllers')
 require('./views')
 module.exports = window.pi
-},{"./components":15,"./controllers":30,"./core":42,"./net":52,"./resources":69,"./views":74}],55:[function(require,module,exports){
+},{"./components":15,"./controllers":30,"./core":42,"./net":52,"./resources":69,"./views":75}],55:[function(require,module,exports){
 'use strict';
 require('./selectable');
 
@@ -6603,8 +6604,7 @@ pi.List.NestedSelect = (function(_super) {
       clear_selection: _null
     };
     this.list.delegate_to(this, 'clear_selection', 'select_all', 'selected');
-    this.type(this.list.options.nested_select_type || "");
-    this.list.on('selection_cleared,selected', (function(_this) {
+    this.list.on('selection_cleared', (function(_this) {
       return function(e) {
         if (e.target !== _this.list) {
           e.cancel();
@@ -6616,21 +6616,19 @@ pi.List.NestedSelect = (function(_super) {
 
   NestedSelect.prototype._check_selected = pi.List.Selectable.prototype._check_selected;
 
-  NestedSelect.prototype.type = function(value) {
-    return this.is_radio = !!value.match('radio');
-  };
-
   NestedSelect.prototype.clear_selection = function(silent) {
-    var item, _base, _i, _len, _ref;
+    var item, _i, _len, _ref;
     if (silent == null) {
       silent = false;
     }
     this.selectable.clear_selection();
-    _ref = this.list.find_cut('.pi-list');
+    _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      if (typeof (_base = item._nod).clear_selection === "function") {
-        _base.clear_selection();
+      if (item instanceof pi.List) {
+        if (typeof item.clear_selection === "function") {
+          item.clear_selection();
+        }
       }
     }
     if (!silent) {
@@ -6639,13 +6637,15 @@ pi.List.NestedSelect = (function(_super) {
   };
 
   NestedSelect.prototype.select_all = function() {
-    var item, _base, _i, _len, _ref, _selected;
+    var item, _i, _len, _ref, _selected;
     this.selectable.select_all(true);
-    _ref = this.list.find_cut('.pi-list');
+    _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      if (typeof (_base = item._nod).select_all === "function") {
-        _base.select_all(true);
+      if (item instanceof pi.List) {
+        if (typeof item.select_all === "function") {
+          item.select_all(true);
+        }
       }
     }
     _selected = this.selected();
@@ -6655,7 +6655,7 @@ pi.List.NestedSelect = (function(_super) {
   };
 
   NestedSelect.prototype.selected = function() {
-    var item, sublist, _i, _len, _ref, _selected;
+    var item, _i, _len, _ref, _selected;
     _selected = [];
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -6665,8 +6665,6 @@ pi.List.NestedSelect = (function(_super) {
       }
       if (item instanceof pi.List) {
         _selected = _selected.concat((typeof item.selected === "function" ? item.selected() : void 0) || []);
-      } else if ((sublist = item.find('.pi-list'))) {
-        _selected = _selected.concat((typeof sublist.selected === "function" ? sublist.selected() : void 0) || []);
       }
     }
     return _selected;
@@ -7033,19 +7031,18 @@ pi.List.Selectable = (function(_super) {
         if (_this.is_radio && !e.data.item.__selected__) {
           _this.clear_selection(true);
           _this.list.select_item(e.data.item);
+          _this.list.trigger('selected', [e.data.item]);
         } else if (_this.is_check) {
           _this.list.toggle_select(e.data.item);
-        } else {
-          return;
+          _this._check_selected();
         }
-        _this._check_selected();
       };
     })(this));
   };
 
   Selectable.prototype._check_selected = function() {
     if (this.list.selected().length) {
-      return this.list.trigger('selected', this.list.selected());
+      return this.list.trigger('selected', this.selected());
     } else {
       return this.list.trigger('selection_cleared');
     }
@@ -7310,7 +7307,7 @@ pi.Plugin = (function(_super) {
 
 },{"../core":42}],68:[function(require,module,exports){
 'use strict';
-var pi, utils, _singular, _wrap,
+var pi, utils, _singular,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -7324,17 +7321,6 @@ pi["export"](pi.resources, "$r");
 
 _singular = function(str) {
   return str.replace(/s$/, '');
-};
-
-_wrap = function(el) {
-  var data;
-  if (el instanceof pi.resources.Base) {
-    data = {};
-    data[el.constructor.resource_name] = el;
-    return data;
-  } else {
-    return el;
-  }
 };
 
 pi.resources.Base = (function(_super) {
@@ -7395,7 +7381,7 @@ pi.resources.Base = (function(_super) {
       if (el.id && add) {
         this.add(el);
         if (!silent) {
-          this.trigger('create', _wrap(el));
+          this.trigger('create', this._wrap(el));
         }
       }
       return el;
@@ -7414,18 +7400,15 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.remove = function(el, silent) {
-    if (el instanceof this) {
-      if (this.__all_by_id__[el.id] != null) {
-        this.__all__.splice(this.__all__.indexOf(el), 1);
-        delete this.__all_by_id__[el.id];
-      }
-      if (!silent) {
-        this.trigger('destroy', _wrap(el));
-      }
-      el.dispose();
-      return true;
+    if (this.__all_by_id__[el.id] != null) {
+      this.__all__.splice(this.__all__.indexOf(el), 1);
+      delete this.__all_by_id__[el.id];
     }
-    return false;
+    if (!silent) {
+      this.trigger('destroy', this._wrap(el));
+    }
+    el.dispose();
+    return true;
   };
 
   Base.listen = function(callback, filter) {
@@ -7462,6 +7445,17 @@ pi.resources.Base = (function(_super) {
     return _results;
   };
 
+  Base._wrap = function(el) {
+    var data;
+    if (el instanceof pi.resources.Base) {
+      data = {};
+      data[el.constructor.resource_name] = el;
+      return data;
+    } else {
+      return el;
+    }
+  };
+
   function Base(data) {
     Base.__super__.constructor.apply(this, arguments);
     this._changes = {};
@@ -7477,6 +7471,17 @@ pi.resources.Base = (function(_super) {
     }
     this.disposed = true;
     return this;
+  };
+
+  Base.prototype.attributes = function() {
+    var change, key, res, _ref;
+    res = {};
+    _ref = this._changes;
+    for (key in _ref) {
+      change = _ref[key];
+      res[key] = change.val;
+    }
+    return res;
   };
 
   Base.prototype.set = function(params, silent) {
@@ -7505,7 +7510,7 @@ pi.resources.Base = (function(_super) {
       bubbles = true;
     }
     Base.__super__.trigger.apply(this, arguments);
-    return this.constructor.trigger(e, _wrap(this));
+    return this.constructor.trigger(e, this.constructor._wrap(this));
   };
 
   return Base;
@@ -7518,13 +7523,15 @@ pi.resources.Base = (function(_super) {
 'use strict';
 require('./base');
 
+require('./view');
+
 require('./rest');
 
 require('./modules');
 
 
 
-},{"./base":68,"./modules":70,"./rest":72}],70:[function(require,module,exports){
+},{"./base":68,"./modules":70,"./rest":72,"./view":73}],70:[function(require,module,exports){
 'use strict';
 require('./query');
 
@@ -7717,7 +7724,7 @@ pi.resources.REST = (function(_super) {
               }
               return this.constructor._request(spec.path, spec.method, utils.merge(params, {
                 id: this.id
-              })).then((function(_this) {
+              }), this).then((function(_this) {
                 return function(response) {
                   if (_this["on_" + spec.action] != null) {
                     return _this["on_" + spec.action](response);
@@ -7739,8 +7746,8 @@ pi.resources.REST = (function(_super) {
     return this._rscope = scope;
   };
 
-  REST._interpolate_path = function(path, params) {
-    var flag, part, path_parts, _i, _len;
+  REST._interpolate_path = function(path, params, target) {
+    var flag, part, path_parts, val, _i, _len;
     path = this._rscope.replace(":path", path).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
     path_parts = path.split(_path_reg);
     path = "";
@@ -7748,7 +7755,11 @@ pi.resources.REST = (function(_super) {
     for (_i = 0, _len = path_parts.length; _i < _len; _i++) {
       part = path_parts[_i];
       if (flag) {
-        path += params[part];
+        val = params[part] || (target != null ? target[part] : void 0);
+        if (val == null) {
+          throw Error("undefined param: " + part);
+        }
+        path += val;
       } else {
         path += part;
       }
@@ -7765,11 +7776,11 @@ pi.resources.REST = (function(_super) {
     });
   };
 
-  REST._request = function(path, method, params) {
+  REST._request = function(path, method, params, target) {
     path = this._interpolate_path(path, utils.merge(params, {
       resources: this.resources_name,
       resource: this.resource_name
-    }));
+    }), target);
     return pi.net[method].call(null, path, params)["catch"]((function(_this) {
       return function(error) {
         _this.error(error.message);
@@ -7863,9 +7874,13 @@ pi.resources.REST = (function(_super) {
     return REST.__super__.set.apply(this, arguments);
   };
 
-  REST.prototype.save = function() {
+  REST.prototype.save = function(params) {
     var attrs;
+    if (params == null) {
+      params = {};
+    }
     attrs = this.wrap_attributes ? this._wrap(this.attributes()) : this.attributes();
+    utils.extend(attrs, params, true);
     if (this._persisted) {
       return this.update(attrs);
     } else {
@@ -7909,6 +7924,137 @@ pi.resources.REST = (function(_super) {
 
 
 },{"../core":42,"./base":68}],73:[function(require,module,exports){
+'use strict';
+var pi, utils,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+pi = require('../core');
+
+require('./base');
+
+utils = pi.utils;
+
+pi.resources.ViewItem = (function(_super) {
+  __extends(ViewItem, _super);
+
+  function ViewItem(view, data) {
+    this.view = view;
+    ViewItem.__super__.constructor.apply(this, arguments);
+    this._changes = {};
+    this.set(data, true);
+  }
+
+  utils.extend(ViewItem.prototype, pi.resources.Base.prototype, false);
+
+  ViewItem.prototype.trigger = function(e, data, bubbles) {
+    if (bubbles == null) {
+      bubbles = true;
+    }
+    ViewItem.__super__.trigger.apply(this, arguments);
+    return this.view.trigger(e, this.view._wrap(this));
+  };
+
+  return ViewItem;
+
+})(pi.EventDispatcher);
+
+pi.resources.View = (function(_super) {
+  __extends(View, _super);
+
+  function View(resources, scope) {
+    this.resources = resources;
+    View.__super__.constructor.apply(this, arguments);
+    this.__all_by_id__ = {};
+    this.__all__ = [];
+    this.resources_name = this.resources.resources_name;
+    this.resource_name = this.resources.resource_name;
+    this._filter = scope != null ? utils.matchers.object_ext(scope) : function() {
+      return true;
+    };
+    this.resources.listen((function(_this) {
+      return function(e) {
+        var el, _name;
+        el = e.data[_this.resource_name];
+        if (!_this._filter(el)) {
+          return;
+        }
+        return typeof _this[_name = "on_" + e.data.type] === "function" ? _this[_name](el) : void 0;
+      };
+    })(this));
+  }
+
+  utils.extend(View.prototype, pi.resources.Base);
+
+  View.prototype.on_update = function(el) {
+    var view_item;
+    if ((view_item = this.get(el.id))) {
+      return view_item.set(el.attributes());
+    }
+  };
+
+  View.prototype.on_destroy = function(el) {
+    var view_item;
+    if ((view_item = this.get(el.id))) {
+      return this.remove(view_item);
+    }
+  };
+
+  View.prototype.build = function(data, silent, add) {
+    var el;
+    if (data == null) {
+      data = {};
+    }
+    if (silent == null) {
+      silent = false;
+    }
+    if (add == null) {
+      add = true;
+    }
+    if (!(el = this.get(data.id))) {
+      if (data instanceof pi.resources.Base) {
+        data = data.attributes();
+      }
+      el = new pi.resources.ViewItem(this, data);
+      if (el.id && add) {
+        this.add(el);
+        if (!silent) {
+          this.trigger('create', this._wrap(el));
+        }
+      }
+      return el;
+    } else {
+      return el.set(data);
+    }
+  };
+
+  View.prototype._wrap = function(el) {
+    var data;
+    if (el instanceof pi.resources.ViewItem) {
+      data = {};
+      data[el.view.resource_name] = el;
+      return data;
+    } else {
+      return el;
+    }
+  };
+
+  View.prototype.listen = function(callback) {
+    return this.on("update", callback);
+  };
+
+  View.prototype.trigger = function(event, data) {
+    data.type = event;
+    return View.__super__.trigger.call(this, "update", data);
+  };
+
+  return View;
+
+})(pi.EventDispatcher);
+
+
+
+},{"../core":42,"./base":68}],74:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7972,7 +8118,7 @@ pi.BaseView = (function(_super) {
 
 
 
-},{"../components/pieces":16,"../core":42}],74:[function(require,module,exports){
+},{"../components/pieces":16,"../core":42}],75:[function(require,module,exports){
 'use strict';
 require('./base');
 
@@ -7984,7 +8130,7 @@ require('./list.view');
 
 
 
-},{"./base":73,"./list.view":75,"./modules":76,"./plugins":80}],75:[function(require,module,exports){
+},{"./base":74,"./list.view":76,"./modules":77,"./plugins":81}],76:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -8019,11 +8165,11 @@ pi.ListView = (function(_super) {
 
 
 
-},{"../core":42,"./base":73}],76:[function(require,module,exports){
+},{"../core":42,"./base":74}],77:[function(require,module,exports){
 'use strict'
 require('./listable')
 require('./loadable')
-},{"./listable":77,"./loadable":78}],77:[function(require,module,exports){
+},{"./listable":78,"./loadable":79}],78:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8109,7 +8255,7 @@ pi.BaseView.Listable = (function() {
 
 
 
-},{"../../core":42,"./../base":73}],78:[function(require,module,exports){
+},{"../../core":42,"./../base":74}],79:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8142,7 +8288,7 @@ pi.BaseView.Loadable = (function() {
 
 
 
-},{"../../core":42,"./../base":73}],79:[function(require,module,exports){
+},{"../../core":42,"./../base":74}],80:[function(require,module,exports){
 'use strict';
 var pi, utils, _app_rxp, _finder_rxp,
   __hasProp = {}.hasOwnProperty,
@@ -8233,7 +8379,7 @@ pi.Base.Restful = (function(_super) {
 
 
 
-},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":67}],80:[function(require,module,exports){
+},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":67}],81:[function(require,module,exports){
 'use strict';
 require('./base.restful');
 
@@ -8241,7 +8387,7 @@ require('./list.restful');
 
 
 
-},{"./base.restful":79,"./list.restful":81}],81:[function(require,module,exports){
+},{"./base.restful":80,"./list.restful":82}],82:[function(require,module,exports){
 'use strict';
 var pi, utils, _where_rxp,
   __hasProp = {}.hasOwnProperty,

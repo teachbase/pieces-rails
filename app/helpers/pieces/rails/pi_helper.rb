@@ -10,8 +10,9 @@ module Pieces
 
       def pi_select_field(name, val, placeholder='', items=[], options={})
         merge_class! options, "pi-select-field pi"
+        merge_data! options, {:name => name, "default-value" => val}
         content_tag(:div, nil, options) do
-          concat hidden_field_tag(name,val)
+          concat hidden_field_tag(nil,val)
           concat content_tag(:div, placeholder, class: 'pi placeholder', pid: "placeholder", data:{placeholder: placeholder})
           concat(
             content_tag(:div, nil, class: 'pi is-hidden list-container pi-select-list', pid: "dropdown") do

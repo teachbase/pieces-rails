@@ -50,8 +50,8 @@ describe HelpersController, type: :controller do
     it 'should render empty select_field' do
       get :select_field_empty
       expect(response).to be_success
-      expect(response.body).to eq '<div class="pi-select-field pi" pid="select_none">'+
-        '<input id="test" name="test" type="hidden" value="1" />'+
+      expect(response.body).to eq '<div class="pi-select-field pi" data-default-value="1" data-name="test" pid="select_none">'+
+        '<input id="" type="hidden" value="1" />'+
         '<div class="pi placeholder" data-placeholder="-choose-" pid="placeholder">-choose-</div>'+
         '<div class="pi is-hidden list-container pi-select-list" pid="dropdown">'+
         '<ul class="list"></ul>'+
@@ -61,8 +61,8 @@ describe HelpersController, type: :controller do
     it 'should render non-empty select_field' do
       get :select_field
       expect(response).to be_success
-      expect(response.body).to eq '<div class="pi-select-field pi" pid="select_sex">'+
-        '<input id="test" name="test" type="hidden" value="1" />'+
+      expect(response.body).to eq '<div class="pi-select-field pi" data-default-value="1" data-name="test" pid="select_sex">'+
+        '<input id="" type="hidden" value="1" />'+
         '<div class="pi placeholder" data-placeholder="-choose-" pid="placeholder">-choose-</div>'+
         '<div class="pi is-hidden list-container pi-select-list" pid="dropdown">'+
         '<ul class="list">'+
