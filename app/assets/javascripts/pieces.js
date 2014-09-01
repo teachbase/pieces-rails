@@ -4122,7 +4122,8 @@ pi.Former = (function() {
   };
 
   Former.prototype._parse_file_value = function(nod) {
-    if (!nod.files.length) {
+    var _ref;
+    if (!((_ref = nod.files) != null ? _ref.length : void 0)) {
       return;
     }
     if (nod.multiple) {
@@ -6073,13 +6074,21 @@ pi.Net = (function() {
     return new Promise((function(_this) {
       return function(resolve, reject) {
         return pi.net.IframeUpload.upload(form, url, _this._to_params(data), method).then(function(response) {
+          var e;
           if (response == null) {
             reject(Error('Response is empty'));
           }
           if (!as_json) {
             resolve(response.innerHtml);
           }
-          response = JSON.parse(response.innerHTML);
+          response = (function() {
+            try {
+              return JSON.parse(response.innerHTML);
+            } catch (_error) {
+              e = _error;
+              return JSON.parse(response.innerText);
+            }
+          })();
           return resolve(response);
         })["catch"](function(e) {
           return reject(e);
