@@ -3260,7 +3260,7 @@ pi.Core = (function() {
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       callback = _ref[_i];
-      _results.push(callback.call(this, args));
+      _results.push(callback.apply(this, args));
     }
     return _results;
   };
@@ -5169,6 +5169,13 @@ pi.utils = (function() {
     return this.get_path(pckg, path);
   };
 
+  utils.wrap = function(key, obj) {
+    var data;
+    data = {};
+    data[key] = obj;
+    return data;
+  };
+
   utils.clone = function(obj, except) {
     var flags, key, newInstance;
     if (except == null) {
@@ -6129,7 +6136,7 @@ require('./resources')
 require('./controllers')
 require('./views')
 module.exports = window.pi
-},{"./components":15,"./controllers":30,"./core":42,"./net":52,"./resources":69,"./views":75}],55:[function(require,module,exports){
+},{"./components":15,"./controllers":30,"./core":42,"./net":52,"./resources":70,"./views":77}],55:[function(require,module,exports){
 'use strict';
 require('./selectable');
 
@@ -7373,6 +7380,96 @@ pi.Plugin = (function(_super) {
 
 },{"../core":42}],68:[function(require,module,exports){
 'use strict';
+var pi, utils,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+pi = require('../core');
+
+require('./base');
+
+require('./view');
+
+utils = pi.utils;
+
+pi.resources.Association = (function(_super) {
+  __extends(Association, _super);
+
+  function Association(resources, scope, options) {
+    this.resources = resources;
+    this.options = options != null ? options : {};
+    Association.__super__.constructor.apply(this, arguments);
+    if (options.owner != null) {
+      this.owner = this.options.owner;
+      this.owner_name_id = "" + this.owner.constructor.resource_name + "_id";
+    }
+  }
+
+  Association.prototype.build = function(data, silent, add) {
+    if (data == null) {
+      data = {};
+    }
+    if (silent == null) {
+      silent = false;
+    }
+    if (add == null) {
+      add = true;
+    }
+    if (this.owner != null) {
+      if (data[this.owner_name_id] == null) {
+        data[this.owner_name_id] = this.owner.id;
+      }
+    }
+    if (!(data instanceof pi.resources.Base)) {
+      data = this.resources.build(data, false);
+    }
+    return Association.__super__.build.call(this, data, silent, add);
+  };
+
+  Association.prototype.on_update = function(el) {
+    if (this.options.copy === false) {
+      return this.trigger('update', this._wrap(el));
+    } else {
+      return Association.__super__.on_update.apply(this, arguments);
+    }
+  };
+
+  Association.prototype.on_destroy = function(el) {
+    if (this.options.copy === false) {
+      return this.trigger('destroy', this._wrap(el));
+    } else {
+      return Association.__super__.on_destroy.apply(this, arguments);
+    }
+  };
+
+  Association.prototype.on_create = function(el) {
+    var view_item;
+    if ((view_item = this.get(el.id))) {
+      if (this.options.copy === false) {
+        return this.trigger('create', this._wrap(el));
+      } else {
+        return view_item.set(el.attributes());
+      }
+    } else {
+      return this.build(el);
+    }
+  };
+
+  Association.prototype.on_load = function() {
+    if (this.options.scope) {
+      this.load(this.resources.where(this.options.scope));
+      return this.trigger('load', {});
+    }
+  };
+
+  return Association;
+
+})(pi.resources.View);
+
+
+
+},{"../core":42,"./base":69,"./view":75}],69:[function(require,module,exports){
+'use strict';
 var pi, utils, _singular,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -7399,15 +7496,25 @@ pi.resources.Base = (function(_super) {
     return this.resource_name = singular || _singular(plural);
   };
 
-  Base.load = function(data) {
-    var el, _i, _len, _results;
+  Base.load = function(data, silent) {
+    var el, elements;
+    if (silent == null) {
+      silent = false;
+    }
     if (data != null) {
-      _results = [];
-      for (_i = 0, _len = data.length; _i < _len; _i++) {
-        el = data[_i];
-        _results.push(this.build(el, true));
+      elements = (function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          el = data[_i];
+          _results.push(this.build(el, true));
+        }
+        return _results;
+      }).call(this);
+      if (!silent) {
+        this.trigger('load', {});
       }
-      return _results;
+      return elements;
     }
   };
 
@@ -7416,7 +7523,7 @@ pi.resources.Base = (function(_super) {
     _ref = this.__all__;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       el = _ref[_i];
-      el.dispose;
+      el.dispose();
     }
     this.__all_by_id__ = {};
     return this.__all__.length = 0;
@@ -7512,11 +7619,8 @@ pi.resources.Base = (function(_super) {
   };
 
   Base._wrap = function(el) {
-    var data;
     if (el instanceof pi.resources.Base) {
-      data = {};
-      data[el.constructor.resource_name] = el;
-      return data;
+      return utils.wrap(el.constructor.resource_name, el);
     } else {
       return el;
     }
@@ -7525,8 +7629,18 @@ pi.resources.Base = (function(_super) {
   function Base(data) {
     Base.__super__.constructor.apply(this, arguments);
     this._changes = {};
-    this.set(data, true);
+    this.initialize(data);
   }
+
+  Base.prototype.initialize = function(data) {
+    if (this._initialized) {
+      return;
+    }
+    this.set(data, true);
+    return this._initialized = true;
+  };
+
+  Base.register_callback('initialize');
 
   Base.prototype.dispose = function() {
     var key, _;
@@ -7585,11 +7699,13 @@ pi.resources.Base = (function(_super) {
 
 
 
-},{"../core":42}],69:[function(require,module,exports){
+},{"../core":42}],70:[function(require,module,exports){
 'use strict';
 require('./base');
 
 require('./view');
+
+require('./association');
 
 require('./rest');
 
@@ -7597,13 +7713,110 @@ require('./modules');
 
 
 
-},{"./base":68,"./modules":70,"./rest":72,"./view":73}],70:[function(require,module,exports){
+},{"./association":68,"./base":69,"./modules":72,"./rest":74,"./view":75}],71:[function(require,module,exports){
+'use strict';
+var pi, utils;
+
+pi = require('../../core');
+
+require('../rest');
+
+utils = pi.utils;
+
+pi.resources.HasMany = (function() {
+  function HasMany() {}
+
+  HasMany.extended = function(klass) {
+    return true;
+  };
+
+  HasMany.has_many = function(name, params) {
+    var _old;
+    if (params == null) {
+      throw Error("Has many require at least 'source' param");
+    }
+    utils.extend(params, {
+      path: ":resources/:id/" + name,
+      method: 'get'
+    });
+    this.prototype[name] = function() {
+      var default_scope, options;
+      if (this["__" + name + "__"] == null) {
+        options = {};
+        if (params.belongs_to === true) {
+          default_scope = {};
+          default_scope["" + this.constructor.resource_name + "_id"] = this.id;
+          if (params.scope == null) {
+            options.scope = default_scope;
+          } else {
+            options.scope = params.scope;
+          }
+          options.owner = this;
+          if (params.params != null) {
+            params.params.push("" + this.constructor.resource_name + "_id");
+          }
+        }
+        utils.extend(options, params);
+        this["__" + name + "__"] = new pi.resources.Association(params.source, options.scope, options);
+        if (options.scope !== false) {
+          this["__" + name + "__"].load(params.source.where(options.scope));
+        }
+      }
+      return this["__" + name + "__"];
+    };
+    if (params.route === true) {
+      this.routes({
+        member: [
+          {
+            action: "load_" + name,
+            path: params.path,
+            method: params.method
+          }
+        ]
+      });
+      this.prototype["on_load_" + name + "}"] = function(data) {
+        this["" + name + "_loaded"] = true;
+        if (data[name] != null) {
+          return this[name]().load(data[name]);
+        }
+      };
+    }
+    this.before_initialize(function(data) {
+      if (data[name]) {
+        this.id = data.id;
+        this[name]().load(data[name]);
+        return delete data[name];
+      }
+    });
+    this.after_initialize(function() {
+      return this[name]();
+    });
+    if (params.attribute === true) {
+      _old = this.prototype.attributes;
+      return this.prototype.attributes = function() {
+        var data;
+        data = _old.call(this);
+        data[name] = this[name]().serialize();
+        return data;
+      };
+    }
+  };
+
+  return HasMany;
+
+})();
+
+
+
+},{"../../core":42,"../rest":74}],72:[function(require,module,exports){
 'use strict';
 require('./query');
 
+require('./has_many');
 
 
-},{"./query":71}],71:[function(require,module,exports){
+
+},{"./has_many":71,"./query":73}],73:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -7634,7 +7847,7 @@ pi.resources.Query = (function() {
 
 
 
-},{"../../core":42,"../rest":72}],72:[function(require,module,exports){
+},{"../../core":42,"../rest":74}],74:[function(require,module,exports){
 'use strict';
 var pi, utils, _double_slashes_reg, _path_reg, _tailing_slash_reg,
   __hasProp = {}.hasOwnProperty,
@@ -7660,15 +7873,16 @@ pi.resources.REST = (function(_super) {
 
   REST.prototype.wrap_attributes = false;
 
+  REST.prototype.__filter_params__ = false;
+
   REST.params = function() {
     var args;
     args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-    if (args.indexOf('id') < 0) {
-      args.push('id');
+    if (!this.prototype.hasOwnProperty("__filter_params__")) {
+      this.prototype.__filter_params__ = [];
+      this.prototype.__filter_params__.push('id');
     }
-    return this.prototype.attributes = function() {
-      return this.__attributes__ || (this.__attributes__ = utils.extract({}, this, args));
-    };
+    return this.prototype.__filter_params__ = this.prototype.__filter_params__.concat(args);
   };
 
   REST.set_resource = function(plural, singular) {
@@ -7889,6 +8103,14 @@ pi.resources.REST = (function(_super) {
     }
   };
 
+  REST.prototype.attributes = function() {
+    if (this.__filter_params__) {
+      return this.__attributes__ || (this.__attributes__ = utils.extract({}, this, this.__filter_params__));
+    } else {
+      return this.__attributes__ = REST.__super__.attributes.apply(this, arguments);
+    }
+  };
+
   REST.prototype.set = function() {
     this.__attributes__ = null;
     return REST.__super__.set.apply(this, arguments);
@@ -7899,8 +8121,9 @@ pi.resources.REST = (function(_super) {
     if (params == null) {
       params = {};
     }
-    attrs = this.wrap_attributes ? this._wrap(this.attributes()) : this.attributes();
+    attrs = this.attributes();
     utils.extend(attrs, params, true);
+    attrs = this.wrap_attributes ? this._wrap(attrs) : attrs;
     if (this._persisted) {
       return this.update(attrs);
     } else {
@@ -7943,7 +8166,7 @@ pi.resources.REST = (function(_super) {
 
 
 
-},{"../core":42,"./base":68}],73:[function(require,module,exports){
+},{"../core":42,"./base":69}],75:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -7962,6 +8185,9 @@ pi.resources.ViewItem = (function(_super) {
     this.view = view;
     this.options = options != null ? options : {};
     ViewItem.__super__.constructor.apply(this, arguments);
+    if ((this.options.params != null) && this.options.params.indexOf('id') < 0) {
+      this.options.params.push('id');
+    }
     this._changes = {};
     this.set(data, true);
   }
@@ -7977,8 +8203,16 @@ pi.resources.ViewItem = (function(_super) {
   };
 
   ViewItem.prototype.attributes = function() {
+    var data;
     if (this.options.params != null) {
-      return utils.extract({}, this, this.options.params);
+      data = utils.extract({}, this, this.options.params);
+      if (this.options.id_alias != null) {
+        if (this.options.id_alias) {
+          data[this.options.id_alias] = data.id;
+        }
+        delete data.id;
+        return data;
+      }
     } else {
       return pi.resources.Base.prototype.attributes.call(this);
     }
@@ -7999,15 +8233,17 @@ pi.resources.View = (function(_super) {
     this.__all__ = [];
     this.resources_name = this.resources.resources_name;
     this.resource_name = this.resources.resource_name;
-    this._filter = scope != null ? utils.matchers.object_ext(scope) : function() {
+    this._filter = (scope != null) && scope !== false ? utils.matchers.object_ext(scope) : function() {
       return true;
     };
     this.resources.listen((function(_this) {
       return function(e) {
         var el, _name;
         el = e.data[_this.resource_name];
-        if (!_this._filter(el)) {
-          return;
+        if (el != null) {
+          if (!_this._filter(el)) {
+            return;
+          }
         }
         return typeof _this[_name = "on_" + e.data.type] === "function" ? _this[_name](el) : void 0;
       };
@@ -8042,10 +8278,14 @@ pi.resources.View = (function(_super) {
       add = true;
     }
     if (!(el = this.get(data.id))) {
-      if (data instanceof pi.resources.Base) {
-        data = data.attributes();
+      if (data instanceof pi.resources.Base && this.options.copy === false) {
+        el = data;
+      } else {
+        if (data instanceof pi.resources.Base) {
+          data = data.attributes();
+        }
+        el = new pi.resources.ViewItem(this, data, this.options);
       }
-      el = new pi.resources.ViewItem(this, data, this.options);
       if (el.id && add) {
         this.add(el);
         if (!silent) {
@@ -8059,11 +8299,10 @@ pi.resources.View = (function(_super) {
   };
 
   View.prototype._wrap = function(el) {
-    var data;
     if (el instanceof pi.resources.ViewItem) {
-      data = {};
-      data[el.view.resource_name] = el;
-      return data;
+      return utils.wrap(el.view.resource_name, el);
+    } else if (el instanceof pi.resources.Base) {
+      return utils.wrap(el.constructor.resource_name, el);
     } else {
       return el;
     }
@@ -8095,7 +8334,7 @@ pi.resources.View = (function(_super) {
 
 
 
-},{"../core":42,"./base":68}],74:[function(require,module,exports){
+},{"../core":42,"./base":69}],76:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -8159,7 +8398,7 @@ pi.BaseView = (function(_super) {
 
 
 
-},{"../components/pieces":16,"../core":42}],75:[function(require,module,exports){
+},{"../components/pieces":16,"../core":42}],77:[function(require,module,exports){
 'use strict';
 require('./base');
 
@@ -8171,7 +8410,7 @@ require('./list.view');
 
 
 
-},{"./base":74,"./list.view":76,"./modules":77,"./plugins":81}],76:[function(require,module,exports){
+},{"./base":76,"./list.view":78,"./modules":79,"./plugins":83}],78:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __hasProp = {}.hasOwnProperty,
@@ -8206,11 +8445,11 @@ pi.ListView = (function(_super) {
 
 
 
-},{"../core":42,"./base":74}],77:[function(require,module,exports){
+},{"../core":42,"./base":76}],79:[function(require,module,exports){
 'use strict'
 require('./listable')
 require('./loadable')
-},{"./listable":78,"./loadable":79}],78:[function(require,module,exports){
+},{"./listable":80,"./loadable":81}],80:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8296,7 +8535,7 @@ pi.BaseView.Listable = (function() {
 
 
 
-},{"../../core":42,"./../base":74}],79:[function(require,module,exports){
+},{"../../core":42,"./../base":76}],81:[function(require,module,exports){
 'use strict';
 var pi, utils;
 
@@ -8329,7 +8568,7 @@ pi.BaseView.Loadable = (function() {
 
 
 
-},{"../../core":42,"./../base":74}],80:[function(require,module,exports){
+},{"../../core":42,"./../base":76}],82:[function(require,module,exports){
 'use strict';
 var pi, utils, _app_rxp, _finder_rxp,
   __hasProp = {}.hasOwnProperty,
@@ -8420,7 +8659,7 @@ pi.Base.Restful = (function(_super) {
 
 
 
-},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":67}],81:[function(require,module,exports){
+},{"../../components/pieces":16,"../../core":42,"../../plugins/plugin":67}],83:[function(require,module,exports){
 'use strict';
 require('./base.restful');
 
@@ -8428,7 +8667,7 @@ require('./list.restful');
 
 
 
-},{"./base.restful":80,"./list.restful":82}],82:[function(require,module,exports){
+},{"./base.restful":82,"./list.restful":84}],84:[function(require,module,exports){
 'use strict';
 var pi, utils, _where_rxp,
   __hasProp = {}.hasOwnProperty,
@@ -8442,7 +8681,7 @@ require('../../components/base/list');
 
 utils = pi.utils;
 
-_where_rxp = /^(\w+)\.where\(([\w\s\,\:]+)\)$/i;
+_where_rxp = /^(\w+)\.(where|find)\(([\w\s\,\:]+)\)(?:\.([\w]+))?$/i;
 
 pi.List.Restful = (function(_super) {
   __extends(Restful, _super);
@@ -8454,25 +8693,38 @@ pi.List.Restful = (function(_super) {
   Restful.prototype.id = 'restful';
 
   Restful.prototype.initialize = function(list) {
-    var key, matches, param, params, resources, rest, val, _i, _len, _ref, _ref1;
+    var el, key, matches, param, ref, resources, rest, val, _i, _len, _ref, _ref1;
     this.list = list;
     Restful.__super__.initialize.apply(this, arguments);
     this.items_by_id = {};
+    this.listen_load = this.list.options.listen_load === true;
     if ((rest = this.list.options.rest) != null) {
       if ((matches = rest.match(_where_rxp))) {
         rest = matches[1];
-        params = {};
-        _ref = matches[2].split(/\s*\,\s*/);
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          param = _ref[_i];
-          _ref1 = param.split(/\s*\:\s*/), key = _ref1[0], val = _ref1[1];
-          params[key] = utils.serialize(val);
+        ref = $r[utils.camelCase(rest)];
+        if (ref != null) {
+          if (matches[2] === 'where') {
+            resources = ref;
+            this.scope = {};
+            _ref = matches[3].split(/\s*\,\s*/);
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              param = _ref[_i];
+              _ref1 = param.split(/\s*\:\s*/), key = _ref1[0], val = _ref1[1];
+              this.scope[key] = utils.serialize(val);
+            }
+          } else if (matches[2] === 'find') {
+            el = ref.get(matches[3] | 0);
+            if ((el != null) && typeof el[matches[4]] === 'function') {
+              resources = el[matches[4]]();
+            }
+          }
         }
-      }
-      if ($r[utils.camelCase(rest)] != null) {
+      } else {
         resources = $r[utils.camelCase(rest)];
-        this.bind(resources, this.list.options.load_rest, params);
       }
+    }
+    if (resources != null) {
+      this.bind(resources, this.list.options.load_rest, this.scope);
     }
     this.list.delegate_to(this, 'find_by_id');
   };
@@ -8490,6 +8742,9 @@ pi.List.Restful = (function(_super) {
       matcher = utils.matchers.object(params);
       filter = (function(_this) {
         return function(e) {
+          if (e.data.type === 'load') {
+            return true;
+          }
           return matcher(e.data[_this.resources.resource_name]);
         };
       })(this);
@@ -8523,7 +8778,9 @@ pi.List.Restful = (function(_super) {
     var item, _i, _len;
     for (_i = 0, _len = data.length; _i < _len; _i++) {
       item = data[_i];
-      this.items_by_id[item.id] = this.list.add_item(item, true);
+      if (!(this.items_by_id[item.id] && this.listen_load)) {
+        this.items_by_id[item.id] = this.list.add_item(item, true);
+      }
     }
     return this.list.update();
   };
@@ -8536,6 +8793,17 @@ pi.List.Restful = (function(_super) {
         return (_ref = _this["on_" + e.data.type]) != null ? _ref.call(_this, e.data[_this.resources.resource_name]) : void 0;
       };
     })(this));
+  };
+
+  Restful.prototype.on_load = function() {
+    if (!this.listen_load) {
+      return;
+    }
+    if (this.scope != null) {
+      return this.load(this.resources.where(this.scope));
+    } else {
+      return this.load(this.resources.all());
+    }
   };
 
   Restful.prototype.on_create = function(data) {
