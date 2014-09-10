@@ -973,6 +973,9 @@ pi.Form = (function(_super) {
         return _this.clear_value(node);
       };
     })(this));
+    if (this.former.options.clear_hidden === false) {
+      this.read_values();
+    }
     if (!silent) {
       return this.trigger(pi.InputEvent.Clear);
     }
@@ -1483,7 +1486,7 @@ pi.Base = (function(_super) {
   });
 
   Base.prototype.dispose = function() {
-    this.trigger('destroyed');
+    this.trigger('destroyed', true, false);
     Base.__super__.dispose.apply(this, arguments);
     if (this.host != null) {
       this.host.remove_component(this);
@@ -7399,38 +7402,77 @@ pi.resources.Association = (function(_super) {
     this.resources = resources;
     this.options = options != null ? options : {};
     Association.__super__.constructor.apply(this, arguments);
-    if (options.owner != null) {
-      this.owner = this.options.owner;
-      this.owner_name_id = "" + this.owner.constructor.resource_name + "_id";
+    this.owner = this.options.owner;
+    if (options.belongs_to === true) {
+      if (options.owner._persisted) {
+        this.owner_name_id = this.options.key;
+      } else {
+        this._only_update = true;
+        this.options.owner.one('create', ((function(_this) {
+          return function() {
+            var _ref;
+            _this._only_update = false;
+            _this.owner = _this.options.owner;
+            _this.owner_name_id = _this.options.key;
+            if (_this.options._scope !== false) {
+              if (((_ref = _this.options._scope) != null ? _ref[_this.options.key] : void 0) != null) {
+                _this.options.scope = utils.merge(_this.options._scope, utils.wrap(_this.options.key, _this.owner.id));
+              } else {
+                _this.options.scope = utils.wrap(_this.options.key, _this.owner.id);
+              }
+              return _this.reload();
+            }
+          };
+        })(this)));
+      }
     }
   }
 
-  Association.prototype.build = function(data, silent, add) {
+  Association.prototype.clear_all = function() {
+    if (this.options.route) {
+      this.owner["" + this.options.name + "_loaded"] = false;
+    }
+    return Association.__super__.clear_all.apply(this, arguments);
+  };
+
+  Association.prototype.reload = function() {
+    this.clear_all();
+    if (this.options.scope) {
+      this._filter = utils.matchers.object_ext(this.options.scope);
+      return this.load(this.options.source.where(this.options.scope));
+    }
+  };
+
+  Association.prototype.build = function(data, silent, params) {
     if (data == null) {
       data = {};
     }
     if (silent == null) {
       silent = false;
     }
-    if (add == null) {
-      add = true;
+    if (params == null) {
+      params = {};
     }
-    if (this.owner != null) {
+    if (this.options.belongs_to === true) {
       if (data[this.owner_name_id] == null) {
         data[this.owner_name_id] = this.owner.id;
       }
+      if (!(data instanceof pi.resources.Base)) {
+        data = this.resources.build(data, false);
+      }
     }
-    if (!(data instanceof pi.resources.Base)) {
-      data = this.resources.build(data, false);
-    }
-    return Association.__super__.build.call(this, data, silent, add);
+    return Association.__super__.build.call(this, data, silent, params);
   };
 
   Association.prototype.on_update = function(el) {
-    if (this.options.copy === false) {
-      return this.trigger('update', this._wrap(el));
+    if (this.get(el.id)) {
+      if (this.options.copy === false) {
+        return this.trigger('update', this._wrap(el));
+      } else {
+        return Association.__super__.on_update.apply(this, arguments);
+      }
     } else {
-      return Association.__super__.on_update.apply(this, arguments);
+      return this.build(el);
     }
   };
 
@@ -7444,6 +7486,9 @@ pi.resources.Association = (function(_super) {
 
   Association.prototype.on_create = function(el) {
     var view_item;
+    if (this._only_update) {
+      return;
+    }
     if ((view_item = this.get(el.id))) {
       if (this.options.copy === false) {
         return this.trigger('create', this._wrap(el));
@@ -7456,6 +7501,9 @@ pi.resources.Association = (function(_super) {
   };
 
   Association.prototype.on_load = function() {
+    if (this._only_update) {
+      return;
+    }
     if (this.options.scope) {
       this.load(this.resources.where(this.options.scope));
       return this.trigger('load', {});
@@ -7590,7 +7638,7 @@ pi.resources.Base = (function(_super) {
 
   Base.trigger = function(event, data) {
     data.type = event;
-    return pi.event.trigger("" + this.resources_name + "_update", data);
+    return pi.event.trigger("" + this.resources_name + "_update", data, false);
   };
 
   Base.off = function(callback) {
@@ -7627,8 +7675,14 @@ pi.resources.Base = (function(_super) {
   };
 
   function Base(data) {
+    if (data == null) {
+      data = {};
+    }
     Base.__super__.constructor.apply(this, arguments);
     this._changes = {};
+    if (data.id != null) {
+      this._persisted = true;
+    }
     this.initialize(data);
   }
 
@@ -7653,6 +7707,17 @@ pi.resources.Base = (function(_super) {
     return this;
   };
 
+  Base.register_callback('dispose', {
+    as: 'destroy'
+  });
+
+  Base.prototype.remove = function(silent) {
+    if (silent == null) {
+      silent = false;
+    }
+    return this.constructor.remove(this, silent);
+  };
+
   Base.prototype.attributes = function() {
     var change, key, res, _ref;
     res = {};
@@ -7665,12 +7730,13 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.prototype.set = function(params, silent) {
-    var key, val, _changed;
+    var key, type, val, _changed, _was_id;
     _changed = false;
+    _was_id = this.id;
     for (key in params) {
       if (!__hasProp.call(params, key)) continue;
       val = params[key];
-      if (this[key] !== val) {
+      if (this[key] !== val && !(typeof this[key] === 'function')) {
         _changed = true;
         this._changes[key] = {
           old_val: this[key],
@@ -7679,15 +7745,20 @@ pi.resources.Base = (function(_super) {
         this[key] = val;
       }
     }
+    type = (params.id != null) && !_was_id ? 'create' : 'update';
     if (_changed && !silent) {
-      this.trigger('update', this._changes);
+      this.trigger(type, (type === 'create' ? this : this._changes));
     }
     return this;
   };
 
+  Base.register_callback('set', {
+    as: 'update'
+  });
+
   Base.prototype.trigger = function(e, data, bubbles) {
     if (bubbles == null) {
-      bubbles = true;
+      bubbles = false;
     }
     Base.__super__.trigger.apply(this, arguments);
     return this.constructor.trigger(e, this.constructor._wrap(this));
@@ -7742,16 +7813,22 @@ pi.resources.HasMany = (function() {
     this.prototype[name] = function() {
       var default_scope, options;
       if (this["__" + name + "__"] == null) {
-        options = {};
+        options = {
+          name: name,
+          owner: this
+        };
         if (params.belongs_to === true) {
-          default_scope = {};
-          default_scope["" + this.constructor.resource_name + "_id"] = this.id;
+          options.key = params.key || ("" + this.constructor.resource_name + "_id");
+          if (params.copy == null) {
+            options.copy = false;
+          }
+          options._scope = params.scope;
+          default_scope = utils.wrap(options.key, this.id);
           if (params.scope == null) {
-            options.scope = default_scope;
+            options.scope = this._persisted ? default_scope : false;
           } else {
             options.scope = params.scope;
           }
-          options.owner = this;
           if (params.params != null) {
             params.params.push("" + this.constructor.resource_name + "_id");
           }
@@ -7774,23 +7851,27 @@ pi.resources.HasMany = (function() {
           }
         ]
       });
-      this.prototype["on_load_" + name + "}"] = function(data) {
+      this.prototype["on_load_" + name] = function(data) {
         this["" + name + "_loaded"] = true;
         if (data[name] != null) {
           return this[name]().load(data[name]);
         }
       };
     }
-    this.before_initialize(function(data) {
+    this.after_update(function(data) {
       if (data[name]) {
-        this.id = data.id;
-        this[name]().load(data[name]);
-        return delete data[name];
+        this["" + name + "_loaded"] = true;
+        return this[name]().load(data[name]);
       }
     });
     this.after_initialize(function() {
       return this[name]();
     });
+    if (params.destroy === true) {
+      this.before_destroy(function() {
+        return this[name]().clear_all(true);
+      });
+    }
     if (params.attribute === true) {
       _old = this.prototype.attributes;
       return this.prototype.attributes = function() {
@@ -8035,6 +8116,7 @@ pi.resources.REST = (function(_super) {
     if (data[this.resource_name] != null) {
       el = this.build(data[this.resource_name], true);
       el._persisted = true;
+      el.commit();
       return el;
     }
   };
@@ -8042,9 +8124,6 @@ pi.resources.REST = (function(_super) {
   REST.build = function() {
     var el;
     el = REST.__super__.constructor.build.apply(this, arguments);
-    if (el.id != null) {
-      el._persisted = true;
-    }
     return el;
   };
 
@@ -8094,9 +8173,9 @@ pi.resources.REST = (function(_super) {
     var params;
     params = data[this.constructor.resource_name];
     if (params != null) {
+      this._persisted = true;
       this.set(params, true);
       this.commit();
-      this._persisted = true;
       this.constructor.add(this);
       this.trigger('create');
       return this;
@@ -8104,15 +8183,18 @@ pi.resources.REST = (function(_super) {
   };
 
   REST.prototype.attributes = function() {
-    if (this.__filter_params__) {
-      return this.__attributes__ || (this.__attributes__ = utils.extract({}, this, this.__filter_params__));
-    } else {
-      return this.__attributes__ = REST.__super__.attributes.apply(this, arguments);
+    if (this.__attributes__changed__) {
+      if (this.__filter_params__) {
+        this.__attributes__ = utils.extract({}, this, this.__filter_params__);
+      } else {
+        this.__attributes__ = REST.__super__.attributes.apply(this, arguments);
+      }
     }
+    return this.__attributes__;
   };
 
   REST.prototype.set = function() {
-    this.__attributes__ = null;
+    this.__attributes__changed__ = true;
     return REST.__super__.set.apply(this, arguments);
   };
 
@@ -8211,8 +8293,8 @@ pi.resources.ViewItem = (function(_super) {
           data[this.options.id_alias] = data.id;
         }
         delete data.id;
-        return data;
       }
+      return data;
     } else {
       return pi.resources.Base.prototype.attributes.call(this);
     }
@@ -8266,7 +8348,32 @@ pi.resources.View = (function(_super) {
     }
   };
 
-  View.prototype.build = function(data, silent, add) {
+  View.prototype.clear_all = function(force) {
+    var el, _i, _j, _len, _len1, _ref, _ref1;
+    if (force == null) {
+      force = false;
+    }
+    if (!((this.options.copy === false) && (force === false))) {
+      if (force && !this.options.copy) {
+        this.__all_by_id__ = {};
+        _ref = this.__all__;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          el = _ref[_i];
+          el.remove();
+        }
+      } else {
+        _ref1 = this.__all__;
+        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+          el = _ref1[_j];
+          el.dispose();
+        }
+      }
+    }
+    this.__all_by_id__ = {};
+    return this.__all__.length = 0;
+  };
+
+  View.prototype.build = function(data, silent, params) {
     var el;
     if (data == null) {
       data = {};
@@ -8274,8 +8381,8 @@ pi.resources.View = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    if (add == null) {
-      add = true;
+    if (params == null) {
+      params = {};
     }
     if (!(el = this.get(data.id))) {
       if (data instanceof pi.resources.Base && this.options.copy === false) {
@@ -8284,9 +8391,10 @@ pi.resources.View = (function(_super) {
         if (data instanceof pi.resources.Base) {
           data = data.attributes();
         }
+        utils.extend(data, params, true);
         el = new pi.resources.ViewItem(this, data, this.options);
       }
-      if (el.id && add) {
+      if (el.id) {
         this.add(el);
         if (!silent) {
           this.trigger('create', this._wrap(el));
@@ -8727,6 +8835,12 @@ pi.List.Restful = (function(_super) {
       this.bind(resources, this.list.options.load_rest, this.scope);
     }
     this.list.delegate_to(this, 'find_by_id');
+    this.list.on('destroyed', (function(_this) {
+      return function() {
+        _this.bind(null);
+        return _this.items_by_id = null;
+      };
+    })(this));
   };
 
   Restful.prototype.bind = function(resources, load, params) {
@@ -8735,9 +8849,12 @@ pi.List.Restful = (function(_super) {
       load = false;
     }
     if (this.resources) {
-      this.resources.off(this.resources_update());
+      this.resources.off(this.resource_update());
     }
     this.resources = resources;
+    if (this.resources == null) {
+      return;
+    }
     if (params != null) {
       matcher = utils.matchers.object(params);
       filter = (function(_this) {
@@ -8807,14 +8924,16 @@ pi.List.Restful = (function(_super) {
   };
 
   Restful.prototype.on_create = function(data) {
-    return this.items_by_id[data.id] = this.list.add_item(data);
+    if (!this.find_by_id(data.id)) {
+      return this.items_by_id[data.id] = this.list.add_item(data);
+    }
   };
 
   Restful.prototype.on_destroy = function(data) {
     var item;
     if ((item = this.find_by_id(data.id))) {
       this.list.remove_item(item);
-      return delete this.items_by_id[item.id];
+      delete this.items_by_id[data.id];
     }
   };
 
