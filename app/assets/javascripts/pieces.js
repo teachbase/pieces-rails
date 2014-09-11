@@ -854,7 +854,7 @@ pi.Compiler = (function() {
       }
     } catch (_error) {
       error = _error;
-      return utils.error(error, error.stack != null);
+      return utils.error(error, error.stack);
     }
   };
 
@@ -5136,6 +5136,8 @@ pi.utils = (function() {
           return true;
         case val !== 'false':
           return false;
+        case val !== '':
+          return '';
         case !isNaN(Number(val)):
           return val;
         default:
@@ -8160,15 +8162,20 @@ pi.resources.REST = (function(_super) {
   };
 
   REST._interpolate_path = function(path, params, target) {
-    var flag, part, path_parts, val, _i, _len;
+    var flag, part, path_parts, val, vars, _i, _len;
     path = this._rscope.replace(":path", path).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
     path_parts = path.split(_path_reg);
+    if (this.prototype.wrap_attributes && (params[this.resource_name] != null)) {
+      vars = utils.extend(params[this.resource_name], params);
+    } else {
+      vars = params;
+    }
     path = "";
     flag = false;
     for (_i = 0, _len = path_parts.length; _i < _len; _i++) {
       part = path_parts[_i];
       if (flag) {
-        val = params[part] != null ? params[part] : target != null ? target[part] : void 0;
+        val = vars[part] != null ? vars[part] : target != null ? target[part] : void 0;
         if (val == null) {
           throw Error("undefined param: " + part);
         }
