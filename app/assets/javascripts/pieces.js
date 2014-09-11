@@ -412,9 +412,10 @@ pi.List = (function(_super) {
   List.prototype.clear = function() {
     this.items_cont.detach_children();
     this.items.length = 0;
-    return this.trigger('update', {
+    this.trigger('update', {
       type: 'clear'
     });
+    return this._check_empty();
   };
 
   List.prototype._update_indeces = function() {
