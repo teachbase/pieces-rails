@@ -8166,7 +8166,7 @@ pi.resources.REST = (function(_super) {
     path = this._rscope.replace(":path", path).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
     path_parts = path.split(_path_reg);
     if (this.prototype.wrap_attributes && (params[this.resource_name] != null)) {
-      vars = utils.extend(params[this.resource_name], params);
+      vars = utils.extend(params[this.resource_name], params, false, [this.resource_name]);
     } else {
       vars = params;
     }
