@@ -265,8 +265,7 @@ pi.List = (function(_super) {
       silent = false;
     }
     if (this.items.length - 1 < index) {
-      this.add_item(data, silent);
-      return;
+      return this.add_item(data, silent);
     }
     item = this._create_item(data);
     this.items.splice(index, 0, item);
@@ -4953,7 +4952,41 @@ pi.NodRoot = (function(_super) {
 
 pi.Nod.root = new pi.NodRoot();
 
-pi.Nod.win = new pi.Nod(window);
+pi.NodWin = (function(_super) {
+  __extends(NodWin, _super);
+
+  NodWin.instance = null;
+
+  function NodWin() {
+    if (pi.NodWin.instance) {
+      throw "NodWin is already defined!";
+    }
+    pi.NodWin.instance = this;
+    this.delegate_to(pi.Nod.root, 'scrollLeft', 'scrollTop', 'scrollWidth', 'scrollHeight');
+    NodWin.__super__.constructor.call(this, window);
+  }
+
+  NodWin.prototype.width = function() {
+    return this.node.innerWidth;
+  };
+
+  NodWin.prototype.height = function() {
+    return this.node.innerHeight;
+  };
+
+  NodWin.prototype.x = function() {
+    return 0;
+  };
+
+  NodWin.prototype.y = function() {
+    return 0;
+  };
+
+  return NodWin;
+
+})(pi.Nod);
+
+pi.Nod.win = new pi.NodWin();
 
 pi.Nod.body = new pi.Nod(document.body);
 
@@ -6873,8 +6906,7 @@ pi.List.ScrollEnd = (function(_super) {
   ScrollEnd.prototype.initialize = function(list) {
     this.list = list;
     ScrollEnd.__super__.initialize.apply(this, arguments);
-    this.scroll_object = this.list.options.scroll_object === 'window' ? pi.Nod.root : this.list.items_cont;
-    this.scroll_native_listener = this.list.options.scroll_object === 'window' ? pi.Nod.win : this.list.items_cont;
+    this.scroll_object = this.list.options.scroll_object === 'window' ? pi.Nod.win : this.list.items_cont;
     this._prev_top = this.scroll_object.scrollTop();
     if (this.list.options.scroll_end !== false) {
       this.enable();
@@ -6895,7 +6927,7 @@ pi.List.ScrollEnd = (function(_super) {
     if (this.enabled) {
       return;
     }
-    this.scroll_native_listener.on('scroll', this.scroll_listener());
+    this.scroll_object.on('scroll', this.scroll_listener());
     return this.enabled = true;
   };
 
@@ -6904,23 +6936,20 @@ pi.List.ScrollEnd = (function(_super) {
       return;
     }
     this.__debounce_id__ && clearTimeout(this.__debounce_id__);
-    this.scroll_native_listener.off('scroll', this.scroll_listener());
+    this.scroll_object.off('scroll', this.scroll_listener());
     this._scroll_listener = null;
     return this.enabled = false;
   };
 
   ScrollEnd.prototype.scroll_listener = function() {
-    if (this._scroll_listener != null) {
-      return this._scroll_listener;
-    }
-    return this._scroll_listener = utils.debounce(500, ((function(_this) {
+    return this._scroll_listener || (this._scroll_listener = utils.debounce(500, ((function(_this) {
       return function(event) {
         if (_this._prev_top <= _this.scroll_object.scrollTop() && _this.list.height() - _this.scroll_object.scrollTop() - _this.scroll_object.height() < 50) {
           _this.list.trigger('scroll_end');
         }
         return _this._prev_top = _this.scroll_object.scrollTop();
       };
-    })(this)), this);
+    })(this)), this));
   };
 
   return ScrollEnd;
