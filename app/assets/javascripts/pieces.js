@@ -1134,7 +1134,7 @@ pi.Form = (function(_super) {
     this.on(pi.InputEvent.Change, (function(_this) {
       return function(e) {
         e.cancel();
-        if (_this.is_valid(e.target)) {
+        if (_this.validate_nod(e.target)) {
           return _this.update_value(e.target.name(), e.data);
         }
       };
@@ -1144,7 +1144,7 @@ pi.Form = (function(_super) {
         if (!utils.is_input(e.target.node)) {
           return;
         }
-        if (_this.is_valid(e.target)) {
+        if (_this.validate_nod(e.target)) {
           return _this.update_value(e.target.node.name, _this.former._parse_nod_value(e.target.node));
         }
       };
@@ -1160,42 +1160,8 @@ pi.Form = (function(_super) {
     }
   };
 
-  Form.prototype.is_valid = function(nod) {
-    var flag, type, types, _i, _len, _ref;
-    if ((types = nod.data('validates'))) {
-      flag = true;
-      _ref = types.split(" ");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        type = _ref[_i];
-        if (!Validator.validate(type, nod, this)) {
-          nod.addClass('is-invalid');
-          flag = false;
-          break;
-        }
-      }
-      if (flag) {
-        nod.removeClass('is-invalid');
-        if (nod.__invalid__) {
-          this._invalids.splice(this._invalids.indexOf(nod.name()), 1);
-          delete nod.__invalid__;
-        }
-        return true;
-      } else {
-        if (nod.__invalid__ == null) {
-          this._invalids.push(nod.name());
-        }
-        nod.__invalid__ = true;
-        return false;
-      }
-    } else {
-      return true;
-    }
-  };
-
   Form.prototype.submit = function() {
-    if (this._invalids.length) {
-      return this.trigger(pi.FormEvent.Invalid, this._invalids);
-    } else {
+    if (this.validate() === true) {
       return this.trigger(pi.FormEvent.Submit, this._value);
     }
   };
@@ -1269,6 +1235,59 @@ pi.Form = (function(_super) {
       return nod.value(val);
     } else if (utils.is_input(node)) {
       return this.former._fill_nod(node, val);
+    }
+  };
+
+  Form.prototype.validate = function() {
+    this.former.traverse_nodes(this.node, (function(_this) {
+      return function(node) {
+        return _this.validate_value(node);
+      };
+    })(this));
+    if (this._invalids.length) {
+      this.trigger(pi.FormEvent.Invalid, this._invalids);
+      return false;
+    } else {
+      return true;
+    }
+  };
+
+  Form.prototype.validate_value = function(node) {
+    var nod;
+    if ((nod = node._nod) instanceof pi.BaseInput) {
+      return this.validate_nod(nod);
+    }
+  };
+
+  Form.prototype.validate_nod = function(nod) {
+    var flag, type, types, _i, _len, _ref;
+    if ((types = nod.data('validates'))) {
+      flag = true;
+      _ref = types.split(" ");
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        type = _ref[_i];
+        if (!Validator.validate(type, nod, this)) {
+          nod.addClass('is-invalid');
+          flag = false;
+          break;
+        }
+      }
+      if (flag) {
+        nod.removeClass('is-invalid');
+        if (nod.__invalid__) {
+          this._invalids.splice(this._invalids.indexOf(nod.name()), 1);
+          delete nod.__invalid__;
+        }
+        return true;
+      } else {
+        if (nod.__invalid__ == null) {
+          this._invalids.push(nod.name());
+        }
+        nod.__invalid__ = true;
+        return false;
+      }
+    } else {
+      return true;
     }
   };
 
@@ -8195,7 +8214,7 @@ pi.resources.REST = (function(_super) {
     var flag, part, path_parts, val, vars, _i, _len;
     path = this._rscope.replace(":path", path).replace(_double_slashes_reg, "/").replace(_tailing_slash_reg, '');
     path_parts = path.split(_path_reg);
-    if (this.prototype.wrap_attributes && (params[this.resource_name] != null)) {
+    if (this.prototype.wrap_attributes && (params[this.resource_name] != null) && (typeof params[this.resource_name] === 'object')) {
       vars = utils.extend(params[this.resource_name], params, false, [this.resource_name]);
     } else {
       vars = params;
