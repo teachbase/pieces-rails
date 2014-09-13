@@ -4579,7 +4579,10 @@ pi.Nod = (function(_super) {
   };
 
   Nod.prototype.detach = function() {
-    this.node.parentNode.removeChild(this.node);
+    var _ref;
+    if ((_ref = this.node.parentNode) != null) {
+      _ref.removeChild(this.node);
+    }
     return this;
   };
 
