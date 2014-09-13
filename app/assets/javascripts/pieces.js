@@ -1960,17 +1960,28 @@ pi.PopupContainer = (function(_super) {
     this.target.addClass('is-popup');
     this.target.hide();
     this.cont.append(this.target);
+    this.setup_target(this.target);
     this.show();
     utils.after(this.show_delay, (function(_this) {
       return function() {
         _this.overlay.show();
-        return _this.target.show();
+        _this.target.show();
+        if (!_this.opened) {
+          _this.opened = true;
+          return _this.trigger('opened', true);
+        }
       };
     })(this));
-    this.__popups__.push(this.target);
-    if (!this.opened) {
-      this.opened = true;
-      return this.trigger('opened');
+    return this.__popups__.push(this.target);
+  };
+
+  PopupContainer.prototype.setup_target = function(target) {
+    var options;
+    options = target.__popup_options__;
+    if (options.close === false) {
+      return this.addClass('no-close');
+    } else {
+      return this.removeClass('no-close');
     }
   };
 
@@ -1997,6 +2008,10 @@ pi.PopupContainer = (function(_super) {
     this._closing = true;
     this.target.hide();
     this.overlay.hide();
+    if (this.__overlays__.length === 1) {
+      this.opened = false;
+      this.trigger('opened', false);
+    }
     return new Promise((function(_this) {
       return function(resolve) {
         return utils.after(_this.hide_delay, function() {
@@ -2016,10 +2031,9 @@ pi.PopupContainer = (function(_super) {
             _this.cont = _this.__containers__[_this.__containers__.length - 1].enable();
             _this.overlay = _this.__overlays__[_this.__overlays__.length - 1].enable();
             _this.target = _this.__popups__[_this.__popups__.length - 1];
+            _this.setup_target(_this.target);
           } else {
-            _this.opened = false;
             _this.hide();
-            _this.trigger('closed');
           }
           _this._closing = false;
           return resolve();
