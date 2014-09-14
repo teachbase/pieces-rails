@@ -71,6 +71,18 @@ describe HelpersController, type: :controller do
         '</ul>'+
         '</div></div>'
     end
+
+    it 'should render select_field with dropdown options' do
+      get :select_field_list_options
+      expect(response).to be_success
+      expect(response.body).to eq '<div class="pi-select-field pi" data-default-value="1" data-name="test" pid="select_none">'+
+        '<input id="" type="hidden" value="1" />'+
+        '<div class="pi placeholder" data-placeholder="-choose-" pid="placeholder">-choose-</div>'+
+        '<div class="my-drop pi is-hidden list-container pi-select-list" data-plugins="scrollable" pid="dropdown">'+
+        '<ul class="list">'+
+        '</ul>'+
+        '</div></div>'
+    end
   end
 
 

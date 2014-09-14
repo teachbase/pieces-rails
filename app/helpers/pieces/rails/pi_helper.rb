@@ -11,11 +11,14 @@ module Pieces
       def pi_select_field(name, val, placeholder='', items=[], options={})
         merge_class! options, "pi-select-field pi"
         merge_data! options, {:name => name, "default-value" => val}
+        list_options = (options[:dropdown]||{}).merge(pid: "dropdown")
+        merge_class! list_options, 'pi is-hidden list-container pi-select-list'
+        options.delete :dropdown
         content_tag(:div, nil, options) do
           concat hidden_field_tag(nil,val)
           concat content_tag(:div, placeholder, class: 'pi placeholder', pid: "placeholder", data:{placeholder: placeholder})
           concat(
-            content_tag(:div, nil, class: 'pi is-hidden list-container pi-select-list', pid: "dropdown") do
+            content_tag(:div, nil, list_options) do
               content_tag(:ul, nil, class: 'list') do
                 items.each do |item|
                   concat content_tag(:li, item[:name], {:class => 'item', "data-value" => item[:value]})
