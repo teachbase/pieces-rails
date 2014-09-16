@@ -6865,7 +6865,7 @@ pi.List.Filterable = (function(_super) {
       };
     })(this)), this, (function(_this) {
       return function(e) {
-        return e.data.type === 'item_added' || e.data.type === 'item_updated';
+        return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
   };
@@ -7427,7 +7427,7 @@ pi.List.Searchable = (function(_super) {
       };
     })(this)), this, (function(_this) {
       return function(e) {
-        return e.data.type === 'item_added' || e.data.type === 'item_updated';
+        return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
   };
@@ -7829,9 +7829,11 @@ pi.List.Sortable = (function(_super) {
       return function(e) {
         return _this.item_updated(e.data.item);
       };
-    })(this)), this, function(e) {
-      return e.data.type === 'item_added' || e.data.type === 'item_updated';
-    });
+    })(this)), this, (function(_this) {
+      return function(e) {
+        return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
+      };
+    })(this));
   };
 
   Sortable.prototype.item_updated = function(item) {
