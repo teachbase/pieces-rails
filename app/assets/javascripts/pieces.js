@@ -1761,11 +1761,11 @@ pi.Base = (function(_super) {
   });
 
   Base.prototype.dispose = function() {
-    this.trigger('destroyed', true, false);
     Base.__super__.dispose.apply(this, arguments);
     if (this.host != null) {
       this.host.remove_component(this);
     }
+    this.trigger('destroyed', true, false);
   };
 
   Base.prototype.remove_component = function(child) {
@@ -7369,6 +7369,9 @@ pi.List.ScrollEnd = (function(_super) {
   ScrollEnd.prototype.scroll_listener = function() {
     return this._scroll_listener || (this._scroll_listener = utils.debounce(500, ((function(_this) {
       return function(event) {
+        if (_this.list._disposed) {
+          return;
+        }
         if (_this._prev_top <= _this.scroll_object.scrollTop() && _this.list.height() - _this.scroll_object.scrollTop() - _this.scroll_object.height() < 50) {
           _this.list.trigger('scroll_end');
         }
@@ -9403,8 +9406,7 @@ pi.List.Restful = (function(_super) {
     this.list.delegate_to(this, 'find_by_id');
     this.list.on('destroyed', (function(_this) {
       return function() {
-        _this.bind(null);
-        return _this.items_by_id = null;
+        return _this.bind(null);
       };
     })(this));
   };
@@ -9419,6 +9421,10 @@ pi.List.Restful = (function(_super) {
     }
     this.resources = resources;
     if (this.resources == null) {
+      this.items_by_id = {};
+      if (!this.list._disposed) {
+        this.list.clear();
+      }
       return;
     }
     if (params != null) {
