@@ -7259,7 +7259,7 @@ pi.List.NestedSelect = (function(_super) {
       return;
     }
     this._prev_selected_list = item.host;
-    if (this.list.selected_size() > 1) {
+    if (this.list.selected().length > 1) {
       this.list.clear_selection(true);
       item.host.select_item(item);
     }
