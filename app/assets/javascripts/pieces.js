@@ -5625,7 +5625,7 @@ pi.utils.browser = (function() {
 
   browser.scrollbar_width = function() {
     return this._scrollbar_width || (this._scrollbar_width = (function() {
-      var outer, outerStyle;
+      var outer, outerStyle, w;
       outer = document.createElement('div');
       outerStyle = outer.style;
       outerStyle.position = 'absolute';
@@ -5634,7 +5634,9 @@ pi.utils.browser = (function() {
       outerStyle.overflow = "scroll";
       outerStyle.top = '-9999px';
       document.body.appendChild(outer);
-      return outer.offsetWidth - outer.clientWidth;
+      w = outer.offsetWidth - outer.clientWidth;
+      document.body.removeChild(outer);
+      return w;
     })());
   };
 
@@ -6557,11 +6559,14 @@ _style_type = {};
 
 binfo = utils.browser.info();
 
-if ((utils.browser.scrollbar_width() === 0 && !binfo.webkit) || binfo.msie) {
-  _style_type.padding = true;
-  _style_type.position = true;
-} else if ((utils.browser.scrollbar_width() > 0 && !binfo.chrome) || utils.browser.scrollbar_width() === 0) {
-  _style_type.position = true;
+if ((utils.browser.scrollbar_width() === 0 && !binfo.webkit) || (binfo.msie && (binfo.version | 0) > 9)) {
+  _style_type.padding = 17;
+  _style_type.position = 17;
+} else if (utils.browser.scrollbar_width() > 0) {
+  _style_type.position = 17;
+} else if (binfo.chrome) {
+  _style_type.padding = 7;
+  _style_type.position = 17;
 }
 
 utils.info('scroller type', _style_type);
@@ -6583,6 +6588,7 @@ pi.Base.Scrollable = (function(_super) {
     }
     this.create_scroller();
     this.hide_native_scroller();
+    this.always_show = this.pane.hasClass('has-scroller');
     this.setup_events();
     return this.update_thumb();
   };
@@ -6592,18 +6598,18 @@ pi.Base.Scrollable = (function(_super) {
     this.thumb = Nod.create('div').addClass('pi-scroll-thumb');
     this.track.append(this.thumb);
     this.pane.append(this.track);
-    return this.pane.addClass('has-scroller');
+    return this.pane.addClass('pi-scroll-pane');
   };
 
   Scrollable.prototype.hide_native_scroller = function() {
     var cssRule, currentPadding;
     cssRule = {};
-    if (_style_type.padding === true) {
+    if (_style_type.padding) {
       currentPadding = window.getComputedStyle(this.content.node, null).getPropertyValue('padding-right').replace(/[^0-9.]+/g, '');
-      cssRule.paddingRight = "" + (+currentPadding + (utils.browser.scrollbar_width() || 17)) + "px";
+      cssRule.paddingRight = "" + (+currentPadding + (utils.browser.scrollbar_width() || _style_type.padding)) + "px";
     }
-    if (_style_type.position === true) {
-      cssRule.right = "-" + (utils.browser.scrollbar_width() || 17) + "px";
+    if (_style_type.position) {
+      cssRule.right = "-" + (utils.browser.scrollbar_width() || _style_type.position) + "px";
     }
     return this.content.style(cssRule);
   };
@@ -6714,6 +6720,18 @@ pi.Base.Scrollable = (function(_super) {
     ch = this.content.clientHeight();
     st = this.content.scrollTop();
     this._last_scroll = st;
+    if (ch === sh) {
+      this.thumb.hide();
+      if (!this.always_show) {
+        this.track.hide();
+      }
+      return;
+    } else if (!this.thumb.visible) {
+      this.thumb.show();
+      if (!this.always_show) {
+        this.track.show();
+      }
+    }
     h = Math.max(20, ch * (ch / sh));
     y = (ch - h) * (st / (sh - ch));
     if ((y < 0) || (y > ch - h)) {
@@ -7203,7 +7221,7 @@ pi.List.NestedSelect = (function(_super) {
         var item;
         if (_this._watching_radio && e.type === 'selected') {
           if (e.target === _this.list) {
-            item = _this.list.selectable._selected_item;
+            item = _this.selectable._selected_item;
           } else {
             item = e.data[0].host.selectable._selected_item;
           }
