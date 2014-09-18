@@ -7207,7 +7207,7 @@ pi.List.NestedSelect = (function(_super) {
 
   NestedSelect.prototype.initialize = function(list) {
     this.list = list;
-    NestedSelect.__super__.initialize.apply(this, arguments);
+    pi.Plugin.prototype.initialize.apply(this, arguments);
     this.selectable = this.list.selectable || {
       select_all: _null,
       clear_selection: _null,
@@ -7215,6 +7215,9 @@ pi.List.NestedSelect = (function(_super) {
       _selected_item: null
     };
     this.list.delegate_to(this, 'clear_selection', 'select_all', 'selected');
+    if (this.list.has_selectable !== true) {
+      this.list.delegate_to(this, 'selected_records', 'selected_record', 'selected_item', 'selected_size');
+    }
     this.type(this.list.options.nested_select_type || "");
     this.list.on('selection_cleared,selected', (function(_this) {
       return function(e) {
@@ -7234,8 +7237,6 @@ pi.List.NestedSelect = (function(_super) {
       };
     })(this));
   };
-
-  NestedSelect.prototype._check_selected = pi.List.Selectable.prototype._check_selected;
 
   NestedSelect.prototype.type = function(value) {
     this.is_radio = !!value.match('radio');
@@ -7319,7 +7320,7 @@ pi.List.NestedSelect = (function(_super) {
 
   return NestedSelect;
 
-})(pi.Plugin);
+})(pi.List.Selectable);
 
 
 
