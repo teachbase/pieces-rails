@@ -7350,7 +7350,7 @@ pi.List.ScrollEnd = (function(_super) {
   ScrollEnd.prototype.initialize = function(list) {
     this.list = list;
     ScrollEnd.__super__.initialize.apply(this, arguments);
-    this.scroll_object = this.list.options.scroll_object === 'window' ? pi.Nod.win : this.list.items_cont;
+    this.scroll_object = this.list.options.scroll_object === 'window' ? pi.Nod.win : this.list.options.scroll_object ? pi.$(this.list.options.scroll_object) : this.list.items_cont;
     this._prev_top = this.scroll_object.scrollTop();
     if (this.list.options.scroll_end !== false) {
       this.enable();
