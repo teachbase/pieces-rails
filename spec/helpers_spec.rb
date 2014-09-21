@@ -30,7 +30,7 @@ describe HelpersController, type: :controller do
       expect(response).to be_success
       expect(response.body).to eq '<div class="pi-checkbox-wrap pi" pid="cb">'+
         '<input id="test" name="test" type="hidden" />'+
-        '<label class="checkbox-label" for="test">Label</label>'+
+        'Label'+
         '</div>'
     end
   end
@@ -40,7 +40,7 @@ describe HelpersController, type: :controller do
       get :file_upload
       expect(response).to be_success
       expect(response.body).to eq '<div class="pi-file-input-wrap pi" multiple="multiple" pid="fu">'+
-        '<span>upload</span>'+
+        'upload'+
         '<input class="file-input" id="test" multiple="multiple" name="test" type="file" />'+
         '</div>'
     end
@@ -85,6 +85,17 @@ describe HelpersController, type: :controller do
     end
   end
 
+  describe 'stepper' do
+    it 'accepts options' do
+      get :stepper
+      expect(response).to be_success
+      expect(response.body).to eq '<div class="pi-stepper pi" data-max="100" data-min="0" data-step="10">'+
+        '<input class="text-input" id="test" name="test" type="text" value="1" />'+
+        '<span class="step step-up"></span>'+
+        '<span class="step step-down"></span>'+
+          '</div>'
+    end
+  end
 
   describe 'assets' do
     it 'should load assets' do

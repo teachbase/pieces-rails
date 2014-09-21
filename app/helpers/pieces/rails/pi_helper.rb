@@ -41,14 +41,23 @@ module Pieces
         merge_class! options,'pi-checkbox-wrap pi'
         content_tag(:div, nil, options) do
           concat hidden_field_tag(name, val)
-          concat label_tag(name, label, class: 'checkbox-label')
+          concat label
+        end
+      end
+
+      def pi_stepper(options = {},&block)
+        merge_class! options,'pi-stepper pi'
+        content_tag(:div, nil, options) do
+          concat capture(&block)
+          concat content_tag(:span, nil, class: 'step step-up')
+          concat content_tag(:span, nil, class: 'step step-down')
         end
       end
 
       def pi_file_upload(name=nil, label='', options = {})
         merge_class! options,'pi-file-input-wrap pi'
         content_tag(:div, nil, options) do
-          concat content_tag(:span, label)
+          concat label
           concat file_field_tag name, class: 'file-input', multiple: options[:multiple]
         end
       end
