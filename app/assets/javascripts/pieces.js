@@ -7002,7 +7002,8 @@ pi.Base.Selectable = (function(_super) {
         if (!_this.target.enabled) {
           return;
         }
-        return _this.toggle_select();
+        _this.toggle_select();
+        return false;
       };
     })(this));
   };
@@ -7101,16 +7102,17 @@ pi.List.Filterable = (function(_super) {
 
   Filterable.prototype.item_updated = function(item) {
     if (!this.matcher) {
-      return;
+      return false;
     }
     if (this._all_items.indexOf(item) < 0) {
       this._all_items.unshift(item);
     }
     if (this.matcher(item)) {
-
+      return;
     } else if (this.filtered) {
-      return this.list.remove_item(item, true);
+      this.list.remove_item(item, true);
     }
+    return false;
   };
 
   Filterable.prototype.all_items = function() {
@@ -7450,6 +7452,8 @@ pi.List.NestedSelect = (function(_super) {
         if (e.target !== _this.list) {
           e.cancel();
           return _this._check_selected();
+        } else {
+          return false;
         }
       };
     })(this));
@@ -7653,11 +7657,12 @@ pi.List.ScrollEnd = (function(_super) {
         return e.data.type === 'item_removed' || e.data.type === 'load';
       };
     })(this));
-    this.list.on('destroyed', (function(_this) {
+    this.list.on('destroyed', ((function(_this) {
       return function() {
-        return _this.disable();
+        _this.disable();
+        return false;
       };
-    })(this));
+    })(this)));
   };
 
   ScrollEnd.prototype.enable = function() {
@@ -7682,12 +7687,13 @@ pi.List.ScrollEnd = (function(_super) {
     return this._scroll_listener || (this._scroll_listener = utils.debounce(500, ((function(_this) {
       return function(event) {
         if (_this.list._disposed) {
-          return;
+          return false;
         }
         if (_this._prev_top <= _this.scroll_object.scrollTop() && _this.list.height() - _this.scroll_object.scrollTop() - _this.scroll_object.height() < 50) {
           _this.list.trigger('scroll_end');
         }
-        return _this._prev_top = _this.scroll_object.scrollTop();
+        _this._prev_top = _this.scroll_object.scrollTop();
+        return false;
       };
     })(this)), this));
   };
@@ -7749,16 +7755,18 @@ pi.List.Searchable = (function(_super) {
 
   Searchable.prototype.item_updated = function(item) {
     if (!this.matcher) {
-      return;
+      return false;
     }
     if (this._all_items.indexOf(item) < 0) {
       this._all_items.unshift(item);
     }
     if (this.matcher(item)) {
       this.highlight_item(this._prevq, item);
+      return;
     } else if (this.searching) {
-      return this.list.remove_item(item, true);
+      this.list.remove_item(item, true);
     }
+    return false;
   };
 
   Searchable.prototype.update_scope = function(scope) {
@@ -7952,7 +7960,8 @@ pi.List.Selectable = (function(_super) {
     this.list.on('update', ((function(_this) {
       return function(e) {
         _this._selected = null;
-        return _this._check_selected();
+        _this._check_selected();
+        return false;
       };
     })(this)), this, function(e) {
       return e.data.type !== 'item_added';
@@ -8170,9 +8179,10 @@ pi.List.Sortable = (function(_super) {
 
   Sortable.prototype.item_updated = function(item) {
     if (!this._compare_fun) {
-      return;
+      return false;
     }
-    return this._bisect_sort(item, 0, this.list.size() - 1);
+    this._bisect_sort(item, 0, this.list.size() - 1);
+    return false;
   };
 
   Sortable.prototype._bisect_sort = function(item, left, right) {
@@ -9735,7 +9745,8 @@ pi.List.Restful = (function(_super) {
     this.list.delegate_to(this, 'find_by_id');
     this.list.on('destroyed', (function(_this) {
       return function() {
-        return _this.bind(null);
+        _this.bind(null);
+        return false;
       };
     })(this));
   };
