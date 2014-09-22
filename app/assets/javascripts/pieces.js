@@ -7423,11 +7423,17 @@ pi.List.NestedSelect = (function(_super) {
       select_all: _null,
       clear_selection: _null,
       type: _null,
-      _selected_item: null
+      _selected_item: null,
+      enable: _null,
+      disable: _null
     };
     this.list.delegate_to(this, 'clear_selection', 'select_all', 'selected', 'where', 'select_item', 'deselect_item');
     if (this.list.has_selectable !== true) {
       this.list.delegate_to(this, 'selected_records', 'selected_record', 'selected_item', 'selected_size');
+    }
+    this.enabled = true;
+    if (this.list.options.no_select != null) {
+      this.disable();
     }
     this.type(this.list.options.nested_select_type || "");
     this.list.on('selection_cleared,selected', (function(_this) {
@@ -7447,6 +7453,36 @@ pi.List.NestedSelect = (function(_super) {
         }
       };
     })(this));
+  };
+
+  NestedSelect.prototype.enable = function() {
+    var item, _i, _len, _ref, _ref1, _results;
+    if (!this.enabled) {
+      this.enabled = true;
+      this.selectable.enable();
+      _ref = this.list.find_cut('.pi-list');
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        item = _ref[_i];
+        _results.push((_ref1 = item._nod.selectable) != null ? _ref1.enable() : void 0);
+      }
+      return _results;
+    }
+  };
+
+  NestedSelect.prototype.disable = function() {
+    var item, _i, _len, _ref, _ref1, _results;
+    if (this.enabled) {
+      this.enabled = false;
+      this.selectable.disable();
+      _ref = this.list.find_cut('.pi-list');
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        item = _ref[_i];
+        _results.push((_ref1 = item._nod.selectable) != null ? _ref1.disable() : void 0);
+      }
+      return _results;
+    }
   };
 
   NestedSelect.prototype.select_item = function(item, force) {
@@ -7902,7 +7938,9 @@ pi.List.Selectable = (function(_super) {
     Selectable.__super__.initialize.apply(this, arguments);
     this.list.merge_classes.push('is-selected');
     this.type(this.list.options.select_type || 'radio');
-    this.list.on('item_click', this.item_click_handler());
+    if (this.list.options.no_select == null) {
+      this.enable();
+    }
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
@@ -7919,6 +7957,20 @@ pi.List.Selectable = (function(_super) {
     })(this)), this, function(e) {
       return e.data.type !== 'item_added';
     });
+  };
+
+  Selectable.prototype.enable = function() {
+    if (!this.enabled) {
+      this.enabled = true;
+      return this.list.on('item_click', this.item_click_handler());
+    }
+  };
+
+  Selectable.prototype.disable = function() {
+    if (this.enabled) {
+      this.enabled = false;
+      return this.list.off('item_click', this.item_click_handler());
+    }
   };
 
   Selectable.prototype.type = function(value) {
