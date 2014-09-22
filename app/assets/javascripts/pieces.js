@@ -2648,7 +2648,7 @@ var pi, utils,
 
 pi = require('../core');
 
-require('./base/base_input');
+require('./base/textinput');
 
 require('./events/input_events');
 
@@ -2722,13 +2722,13 @@ pi.Stepper = (function(_super) {
 
   return Stepper;
 
-})(pi.BaseInput);
+})(pi.TextInput);
 
 pi.Guesser.rules_for('stepper', ['pi-stepper']);
 
 
 
-},{"../core":45,"./base/base_input":3,"./events/input_events":12}],29:[function(require,module,exports){
+},{"../core":45,"./base/textinput":7,"./events/input_events":12}],29:[function(require,module,exports){
 'use strict';
 var pi, utils, _swf_count,
   __hasProp = {}.hasOwnProperty,
