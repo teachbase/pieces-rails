@@ -1100,7 +1100,7 @@ pi.Guesser.rules_for('file_input', ['pi-file-input-wrap'], ['input[file]'], func
 
 },{"../core":45,"./base/base_input":3,"./events/input_events":12}],14:[function(require,module,exports){
 'use strict';
-var Validator, pi, utils,
+var Validator, pi, utils, _array_name,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -1113,6 +1113,10 @@ require('./base/validator');
 utils = pi.utils;
 
 Validator = pi.BaseInput.Validator;
+
+_array_name = function(name) {
+  return name.indexOf('[]') > -1;
+};
 
 pi.Form = (function(_super) {
   __extends(Form, _super);
@@ -1202,18 +1206,31 @@ pi.Form = (function(_super) {
   };
 
   Form.prototype.read_values = function() {
-    return this.former.traverse_nodes(this.node, (function(_this) {
+    var _name_values;
+    _name_values = [];
+    this.former.traverse_nodes(this.node, (function(_this) {
       return function(node) {
         var nod;
         if (((nod = node._nod) instanceof pi.BaseInput) && nod.name()) {
-          _this._cache[nod.name()] = nod;
-          return _this.update_value(nod.name(), nod.value(), true);
+          if (!_array_name(name)) {
+            _this._cache[nod.name()] = nod;
+          }
+          return _name_values.push({
+            name: nod.name(),
+            value: nod.value()
+          });
         } else if (utils.is_input(node) && node.name) {
-          _this._cache[node.name] = pi.Nod.create(node);
-          return _this.update_value(node.name, _this.former._parse_nod_value(node));
+          if (!_array_name(node.name)) {
+            _this._cache[node.name] = pi.Nod.create(node);
+          }
+          return _name_values.push({
+            name: node.name,
+            value: _this.former._parse_nod_value(node)
+          });
         }
       };
     })(this));
+    return this._value = this.former.process_name_values(_name_values);
   };
 
   Form.prototype.find_by_name = function(name) {
@@ -1311,6 +1328,9 @@ pi.Form = (function(_super) {
     }
     name = this.former.transform_name(name);
     val = this.former.transform_value(val);
+    if (_array_name(name) === true) {
+      return;
+    }
     utils.set_path(this._value, name, val);
     if (!silent) {
       return this.trigger(pi.FormEvent.Update, this._value);
