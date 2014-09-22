@@ -8259,7 +8259,7 @@ pi.Plugin = (function(_super) {
   Plugin.included = function(klass) {
     var self;
     self = this;
-    return klass.before_create(function() {
+    return klass.after_initialize(function() {
       return this.attach_plugin(self);
     });
   };
