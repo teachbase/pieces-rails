@@ -4030,6 +4030,9 @@ _selector = function(s, parent) {
       if (node.matches(s)) {
         return true;
       }
+      if (node === parent) {
+        return false;
+      }
       while ((node = node.parentNode) !== parent) {
         if (node.matches(s)) {
           return (e.target = pi.Nod.create(node));
