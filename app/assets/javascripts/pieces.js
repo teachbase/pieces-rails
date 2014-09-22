@@ -2680,6 +2680,7 @@ pi.Stepper = (function(_super) {
         } else {
           _this.decr();
         }
+        _this.trigger(pi.InputEvent.Change, _this.value());
         return e.cancel();
       };
     })(this));
@@ -5392,7 +5393,7 @@ pi.utils = (function() {
 
   utils.notsnake_rxp = /((?:^[^A-Z]|[A-Z])[^A-Z]*)/g;
 
-  utils.str_rxp = /(^'|'$)/;
+  utils.str_rxp = /(^'|'$)/g;
 
   utils.uid = function() {
     return "" + (++this.uniq_id);
