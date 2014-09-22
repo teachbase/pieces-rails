@@ -4227,7 +4227,7 @@ pi.Former = (function() {
                 if (_current[_arr_name].length > 0) {
                   _array_item = _current[_arr_name][_current[_arr_name].length - 1];
                 }
-                if (!_arr_len || ((__indexOf.call(_arrays[_arr_fullname], _next_field) >= 0) && !(_next_field.indexOf('[]') > -1 || !(_array_item[_next_field] && (i + 1 === len - 1))))) {
+                if (!_arr_len || ((__indexOf.call(_arrays[_arr_fullname], _next_field) >= 0) && !(_next_field.indexOf('[]') > -1 || !((_array_item[_next_field] != null) && (i + 1 === len - 1))))) {
                   _array_item = {};
                   _current[_arr_name].push(_array_item);
                   _arrays[_arr_fullname] = [];
