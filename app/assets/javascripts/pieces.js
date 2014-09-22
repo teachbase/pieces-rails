@@ -3606,6 +3606,7 @@ pi.Event = (function(_super) {
     }
     this.bubbles = bubbles;
     this.canceled = false;
+    this.captured = false;
   }
 
   Event.prototype.cancel = function() {
@@ -3649,7 +3650,9 @@ pi.EventListener = (function(_super) {
     if (this.disposed || !this.conditions(event)) {
       return;
     }
-    this.handler.call(this.context, event);
+    if (this.handler.call(this.context, event) !== false) {
+      event.captured = true;
+    }
     if (this.disposable) {
       return this.dispose();
     }
@@ -3736,7 +3739,8 @@ pi.EventDispatcher = (function(_super) {
         }
       }
       this.remove_disposed_listeners();
-    } else {
+    }
+    if (event.captured !== true) {
       if (event.bubbles) {
         this.bubble_event(event);
       }
@@ -4048,7 +4052,7 @@ pi.NodEventDispatcher = (function(_super) {
   }
 
   NodEventDispatcher.prototype.listen = function(selector, event, callback, context) {
-    return this.on(event, callback, context, _selector(selector));
+    return this.on(event, callback, context, _selector(selector, this.node));
   };
 
   NodEventDispatcher.prototype.add_native_listener = function(type) {
