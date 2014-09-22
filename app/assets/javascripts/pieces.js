@@ -2440,7 +2440,9 @@ pi.SelectInput = (function(_super) {
         return _this.dropdown.hide();
       };
     })(this));
-    if (this.options.default_value != null) {
+    if (this.input.value()) {
+      return this.value(utils.serialize(this.input.value()));
+    } else if (this.options.default_value != null) {
       return this.value(this.options.default_value);
     } else if (this.placeholder.text() === '') {
       return this.placeholder.text(this.placeholder.options.placeholder);
