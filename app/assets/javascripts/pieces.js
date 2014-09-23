@@ -215,13 +215,16 @@ pi.List = (function(_super) {
     return this._flush_buffer();
   };
 
-  List.prototype.data_provider = function(data) {
+  List.prototype.data_provider = function(data, silent) {
     var item, _i, _len;
     if (data == null) {
       data = null;
     }
+    if (silent == null) {
+      silent = false;
+    }
     if (this.items.length) {
-      this.clear();
+      this.clear(silent);
     }
     if (data != null) {
       for (_i = 0, _len = data.length; _i < _len; _i++) {
@@ -229,7 +232,9 @@ pi.List = (function(_super) {
         this.add_item(item, true);
       }
     }
-    this.update('load');
+    if (!silent) {
+      this.update('load');
+    }
     return this;
   };
 
@@ -244,7 +249,7 @@ pi.List = (function(_super) {
     }
     this.items.push(item);
     this._check_empty();
-    item.data('list-index', this.items.length - 1);
+    item.record.__list_index__ = this.items.length - 1;
     if (!silent) {
       this.items_cont.append(item);
     } else {
@@ -270,7 +275,7 @@ pi.List = (function(_super) {
     item = this._create_item(data);
     this.items.splice(index, 0, item);
     _after = this.items[index + 1];
-    item.data('list-index', index);
+    item.record.__list_index__ = index;
     _after.insertBefore(item);
     this._need_update_indeces = true;
     if (!silent) {
@@ -357,7 +362,7 @@ pi.List = (function(_super) {
 
   List.prototype.move_item = function(item, index) {
     var _after;
-    if ((item.data('list-index') === index) || (index > this.items.length - 1)) {
+    if ((item.record.__list_index__ === index) || (index > this.items.length - 1)) {
       return;
     }
     this.items.splice(this.items.indexOf(item), 1);
@@ -424,6 +429,7 @@ pi.List = (function(_super) {
     for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
       item = _ref[i];
       item.data('list-index', i);
+      item.record.__list_index__ = i;
     }
     return this._need_update_indeces = false;
   };
@@ -453,6 +459,7 @@ pi.List = (function(_super) {
     if (item == null) {
       return;
     }
+    item.record || (item.record = {});
     item.is_list_item = true;
     item.host = this;
     return item;
