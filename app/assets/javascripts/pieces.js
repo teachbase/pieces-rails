@@ -241,13 +241,12 @@ pi.List = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    item = this._create_item(data);
+    item = this._create_item(data, this.items.length - 1);
     if (item == null) {
       return;
     }
     this.items.push(item);
     this._check_empty();
-    item.record.__list_index__ = this.items.length - 1;
     if (!silent) {
       this.items_cont.append(item);
     } else {
@@ -270,7 +269,7 @@ pi.List = (function(_super) {
     if (this.items.length - 1 < index) {
       return this.add_item(data, silent);
     }
-    item = this._create_item(data);
+    item = this._create_item(data, index);
     this.items.splice(index, 0, item);
     _after = this.items[index + 1];
     item.record.__list_index__ = index;
@@ -461,15 +460,20 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype._create_item = function(data) {
+  List.prototype._create_item = function(data, index) {
     var item;
+    if (data == null) {
+      data = {};
+    }
     if (data instanceof pi.Nod && data.is_list_item) {
       if (data.host === this) {
+        data.__list_index__ = index;
         return data;
       } else {
         return null;
       }
     }
+    data.__list_index__ = index;
     item = this._renderer.render(data);
     if (item == null) {
       return;
