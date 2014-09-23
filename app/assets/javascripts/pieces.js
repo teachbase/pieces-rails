@@ -241,7 +241,7 @@ pi.List = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    item = this._create_item(data, this.items.length - 1);
+    item = this._create_item(data, this.items.length);
     if (item == null) {
       return;
     }
@@ -473,7 +473,11 @@ pi.List = (function(_super) {
         return null;
       }
     }
-    data.__list_index__ = index;
+    if (data instanceof pi.Nod) {
+      data.data('__list_index__', index);
+    } else {
+      data.__list_index__ = index;
+    }
     item = this._renderer.render(data);
     if (item == null) {
       return;
