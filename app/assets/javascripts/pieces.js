@@ -232,9 +232,7 @@ pi.List = (function(_super) {
         this.add_item(item, true);
       }
     }
-    if (!silent) {
-      this.update('load');
-    }
+    this.update('load', silent);
     return this;
   };
 
@@ -403,15 +401,20 @@ pi.List = (function(_super) {
     return this.items.length;
   };
 
-  List.prototype.update = function(type) {
+  List.prototype.update = function(type, silent) {
+    if (silent == null) {
+      silent = false;
+    }
     this._flush_buffer();
     if (this._need_update_indeces) {
       this._update_indeces();
     }
-    this._check_empty();
-    return this.trigger('update', {
-      type: type
-    });
+    this._check_empty(silent);
+    if (!silent) {
+      return this.trigger('update', {
+        type: type
+      });
+    }
   };
 
   List.prototype.clear = function() {
@@ -434,15 +437,22 @@ pi.List = (function(_super) {
     return this._need_update_indeces = false;
   };
 
-  List.prototype._check_empty = function() {
+  List.prototype._check_empty = function(silent) {
+    if (silent == null) {
+      silent = false;
+    }
     if (!this.empty && this.items.length === 0) {
       this.addClass('is-empty');
       this.empty = true;
-      return this.trigger('empty', true);
+      if (!silent) {
+        return this.trigger('empty', true);
+      }
     } else if (this.empty && this.items.length > 0) {
       this.removeClass('is-empty');
       this.empty = false;
-      return this.trigger('empty', false);
+      if (!silent) {
+        return this.trigger('empty', false);
+      }
     }
   };
 
