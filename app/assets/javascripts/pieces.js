@@ -8361,12 +8361,17 @@ pi.resources.Association = (function(_super) {
         this._only_update = true;
         this.options.owner.one('create', ((function(_this) {
           return function() {
-            var _ref;
+            var el, _i, _len, _ref, _ref1;
             _this._only_update = false;
             _this.owner = _this.options.owner;
             _this.owner_name_id = _this.options.key;
+            _ref = _this.__all__;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              el = _ref[_i];
+              el.set(utils.wrap(_this.owner_name_id, _this.owner.id), true);
+            }
             if (_this.options._scope !== false) {
-              if (((_ref = _this.options._scope) != null ? _ref[_this.options.key] : void 0) != null) {
+              if (((_ref1 = _this.options._scope) != null ? _ref1[_this.options.key] : void 0) != null) {
                 _this.options.scope = utils.merge(_this.options._scope, utils.wrap(_this.options.key, _this.owner.id));
               } else {
                 _this.options.scope = utils.wrap(_this.options.key, _this.owner.id);
@@ -8441,16 +8446,13 @@ pi.resources.Association = (function(_super) {
 
   Association.prototype.on_create = function(el) {
     var view_item;
-    if (this._only_update) {
-      return;
-    }
-    if ((view_item = this.get(el.id))) {
+    if ((view_item = this.get(el.id) || this.get(el.__tid__))) {
       if (this.options.copy === false) {
         return this.trigger('create', this._wrap(el));
       } else {
         return view_item.set(el.attributes());
       }
-    } else {
+    } else if (!this._only_update) {
       return this.build(el);
     }
   };
@@ -8494,6 +8496,7 @@ pi.resources.Base = (function(_super) {
 
   Base.set_resource = function(plural, singular) {
     this.__all_by_id__ = {};
+    this.__all_by_tid__ = {};
     this.__all__ = [];
     this.resources_name = plural;
     return this.resource_name = singular || _singular(plural);
@@ -8529,15 +8532,20 @@ pi.resources.Base = (function(_super) {
       el.dispose();
     }
     this.__all_by_id__ = {};
+    this.__all_by_tid__ = {};
     return this.__all__.length = 0;
   };
 
   Base.get = function(id) {
-    return this.__all_by_id__[id];
+    return this.__all_by_id__[id] || this.__all_by_tid__[id];
   };
 
   Base.add = function(el) {
-    this.__all_by_id__[el.id] = el;
+    if (el.__temp__ === true) {
+      this.__all_by_tid__[el.id] = el;
+    } else {
+      this.__all_by_id__[el.id] = el;
+    }
     return this.__all__.push(el);
   };
 
@@ -8553,10 +8561,14 @@ pi.resources.Base = (function(_super) {
       add = true;
     }
     if (!(data.id && (el = this.get(data.id)))) {
+      if (!data.id) {
+        data.id = "tid_" + (utils.uid());
+        data.__temp__ = true;
+      }
       el = new this(data);
-      if (el.id && add) {
+      if (add) {
         this.add(el);
-        if (!silent) {
+        if (!(silent || el.__temp__)) {
           this.trigger('create', this._wrap(el));
         }
       }
@@ -8564,6 +8576,27 @@ pi.resources.Base = (function(_super) {
     } else {
       return el.set(data);
     }
+  };
+
+  Base.created = function(el, temp_id) {
+    if (this.__all_by_tid__[temp_id]) {
+      delete this.__all_by_tid__[temp_id];
+      return this.__all_by_id__[el.id] = el;
+    }
+  };
+
+  Base.clear_temp = function(silent) {
+    var el, _, _ref;
+    if (silent == null) {
+      silent = false;
+    }
+    _ref = this.__all_by_tid__;
+    for (_ in _ref) {
+      if (!__hasProp.call(_ref, _)) continue;
+      el = _ref[_];
+      this.remove(el, silent);
+    }
+    return this.__all_by_tid__ = {};
   };
 
   Base.remove_by_id = function(id, silent) {
@@ -8577,9 +8610,11 @@ pi.resources.Base = (function(_super) {
 
   Base.remove = function(el, silent) {
     if (this.__all_by_id__[el.id] != null) {
-      this.__all__.splice(this.__all__.indexOf(el), 1);
       delete this.__all_by_id__[el.id];
+    } else {
+      delete this.__all_by_tid__[el.id];
     }
+    this.__all__.splice(this.__all__.indexOf(el), 1);
     if (!silent) {
       this.trigger('destroy', this._wrap(el));
     }
@@ -8635,7 +8670,7 @@ pi.resources.Base = (function(_super) {
     }
     Base.__super__.constructor.apply(this, arguments);
     this._changes = {};
-    if (data.id != null) {
+    if ((data.id != null) && !data.__temp__) {
       this._persisted = true;
     }
     this.initialize(data);
@@ -8650,6 +8685,10 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.register_callback('initialize');
+
+  Base.prototype.created = function(temp_id) {
+    return this.constructor.created(this, temp_id);
+  };
 
   Base.prototype.dispose = function() {
     var key, _;
@@ -8685,9 +8724,10 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.prototype.set = function(params, silent) {
-    var key, type, val, _changed, _was_id;
+    var key, type, val, _changed, _old_id, _was_id;
     _changed = false;
-    _was_id = this.id;
+    _was_id = !!this.id && !(this.__temp__ === true);
+    _old_id = this.id;
     for (key in params) {
       if (!__hasProp.call(params, key)) continue;
       val = params[key];
@@ -8700,7 +8740,15 @@ pi.resources.Base = (function(_super) {
         this[key] = val;
       }
     }
-    type = (params.id != null) && !_was_id ? 'create' : 'update';
+    if ((this.id | 0) && !_was_id) {
+      delete this.__temp__;
+      this._persisted = true;
+      this.__tid__ = _old_id;
+      type = 'create';
+      this.created(_old_id);
+    } else {
+      type = 'update';
+    }
     if (_changed && !silent) {
       this.trigger(type, (type === 'create' ? this : this._changes));
     }
@@ -9075,7 +9123,6 @@ pi.resources.REST = (function(_super) {
     var el;
     if (data[this.resource_name] != null) {
       el = this.build(data[this.resource_name], true);
-      el._persisted = true;
       el.commit();
       return el;
     }
@@ -9133,7 +9180,6 @@ pi.resources.REST = (function(_super) {
     var params;
     params = data[this.constructor.resource_name];
     if (params != null) {
-      this._persisted = true;
       this.set(params, true);
       this.commit();
       this.constructor.add(this);
@@ -9236,6 +9282,10 @@ pi.resources.ViewItem = (function(_super) {
 
   utils.extend(ViewItem.prototype, pi.resources.Base.prototype, false);
 
+  ViewItem.prototype.created = function(tid) {
+    return this.view.created(this, tid);
+  };
+
   ViewItem.prototype.trigger = function(e, data, bubbles) {
     if (bubbles == null) {
       bubbles = true;
@@ -9272,6 +9322,7 @@ pi.resources.View = (function(_super) {
     this.options = options != null ? options : {};
     View.__super__.constructor.apply(this, arguments);
     this.__all_by_id__ = {};
+    this.__all_by_tid__ = {};
     this.__all__ = [];
     this.resources_name = this.resources.resources_name;
     this.resource_name = this.resources.resource_name;
@@ -9316,6 +9367,7 @@ pi.resources.View = (function(_super) {
     if (!((this.options.copy === false) && (force === false))) {
       if (force && !this.options.copy) {
         this.__all_by_id__ = {};
+        this.__all_by_tid__ = {};
         _ref = this.__all__;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           el = _ref[_i];
@@ -9330,6 +9382,7 @@ pi.resources.View = (function(_super) {
       }
     }
     this.__all_by_id__ = {};
+    this.__all_by_tid__ = {};
     return this.__all__.length = 0;
   };
 
@@ -9699,10 +9752,11 @@ pi.Base.Restful = (function(_super) {
       render = false;
     }
     if (this.resource) {
-      this.resource.off(this.resource_update());
+      this.resource.off('update', this.resource_update());
+      this.resource.off('create', this.resource_update());
     }
     this.resource = resource;
-    this.resource.on('update', this.resource_update());
+    this.resource.on('update,create', this.resource_update());
     if (render) {
       return this.target.render(resource);
     }
@@ -9888,8 +9942,13 @@ pi.List.Restful = (function(_super) {
   };
 
   Restful.prototype.on_create = function(data) {
+    var item;
     if (!this.find_by_id(data.id)) {
       return this.items_by_id[data.id] = this.list.add_item(data);
+    } else if (data.__tid__ && (item = this.find_by_id(data.__tid__))) {
+      delete this.items_by_id[data.__tid__];
+      this.items_by_id[data.id] = item;
+      return this.list.update_item(item, data);
     }
   };
 
