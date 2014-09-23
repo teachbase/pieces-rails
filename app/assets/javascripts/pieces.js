@@ -4085,7 +4085,7 @@ _selector = function(s, parent) {
       if (node === parent) {
         return false;
       }
-      while ((node = node.parentNode) !== parent) {
+      while ((node = node.parentNode) && node !== parent) {
         if (node.matches(s)) {
           return (e.target = pi.Nod.create(node));
         }
