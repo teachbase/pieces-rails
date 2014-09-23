@@ -417,13 +417,18 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype.clear = function() {
+  List.prototype.clear = function(silent) {
+    if (silent == null) {
+      silent = false;
+    }
     this.items_cont.detach_children();
     this.items.length = 0;
-    this.trigger('update', {
-      type: 'clear'
-    });
-    return this._check_empty();
+    if (!silent) {
+      this.trigger('update', {
+        type: 'clear'
+      });
+    }
+    return this._check_empty(silent);
   };
 
   List.prototype._update_indeces = function() {
