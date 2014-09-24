@@ -489,8 +489,7 @@ pi.List = (function(_super) {
   };
 
   List.prototype._destroy_item = function(item) {
-    item.remove();
-    return item.dispose();
+    return item.remove();
   };
 
   List.prototype._flush_buffer = function(append) {
@@ -1712,6 +1711,7 @@ pi.Base = (function(_super) {
   Base.prototype.preinitialize = function() {
     this.node._nod = this;
     this.__components__ = [];
+    this.__plugins__ = [];
     this.pid = this.data('pid') || this.attr('pid') || this.node.id;
     this.visible = this.enabled = true;
     return this.active = false;
@@ -1748,7 +1748,7 @@ pi.Base = (function(_super) {
   Base.prototype.attach_plugin = function(plugin) {
     if (plugin != null) {
       utils.debug("plugin attached " + plugin.prototype.id);
-      return plugin.attached(this);
+      return this.__plugins__.push(plugin.attached(this));
     }
   };
 
@@ -1815,10 +1815,20 @@ pi.Base = (function(_super) {
   });
 
   Base.prototype.dispose = function() {
-    Base.__super__.dispose.apply(this, arguments);
+    var plugin, _i, _len, _ref;
+    if (this._disposed) {
+      return;
+    }
     if (this.host != null) {
       this.host.remove_component(this);
     }
+    _ref = this.__plugins__;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      plugin = _ref[_i];
+      plugin.dispose();
+    }
+    this.__plugins__.length = 0;
+    Base.__super__.dispose.apply(this, arguments);
     this.trigger('destroyed', true, false);
   };
 
@@ -6766,6 +6776,7 @@ pi.Base.Renderable = (function(_super) {
     Renderable.__super__.initialize.apply(this, arguments);
     this.target._renderer = this.find_renderer();
     this.target.delegate_to(this, 'render');
+    return this;
   };
 
   Renderable.prototype.render = function(data) {
@@ -6853,7 +6864,8 @@ pi.Base.Scrollable = (function(_super) {
     this.hide_native_scroller();
     this.always_show = this.pane.hasClass('has-scroller');
     this.setup_events();
-    return this.update_thumb();
+    this.update_thumb();
+    return this;
   };
 
   Scrollable.prototype.create_scroller = function() {
@@ -7046,6 +7058,7 @@ pi.Base.Selectable = (function(_super) {
     Selectable.__super__.initialize.apply(this, arguments);
     this.__selected__ = this.target.hasClass('is-selected');
     this.target.on('click', this.click_handler());
+    return this;
   };
 
   Selectable.prototype.click_handler = function() {
@@ -7141,7 +7154,7 @@ pi.List.Filterable = (function(_super) {
     this.list = list;
     Filterable.__super__.initialize.apply(this, arguments);
     this.list.delegate_to(this, 'filter');
-    return this.list.on('update', ((function(_this) {
+    this.list.on('update', ((function(_this) {
       return function(e) {
         return _this.item_updated(e.data.item);
       };
@@ -7150,6 +7163,7 @@ pi.List.Filterable = (function(_super) {
         return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
+    return this;
   };
 
   Filterable.prototype.item_updated = function(item) {
@@ -7285,7 +7299,8 @@ pi.List.MoveSelect = (function(_super) {
       this.list.attach_plugin(pi.List.Selectable);
     }
     this._direction = this.list.options.direction || 'y';
-    return this.list.on('mousedown', this.mouse_down_listener());
+    this.list.on('mousedown', this.mouse_down_listener());
+    return this;
   };
 
   MoveSelect.prototype._item_under_point = function(point) {
@@ -7437,6 +7452,10 @@ pi.List.MoveSelect = (function(_super) {
     })(this)));
   };
 
+  MoveSelect.prototype.dispose = function() {
+    return pi.Nod.root.off('mouseup', this.mouse_up_listener());
+  };
+
   return MoveSelect;
 
 })(pi.Plugin);
@@ -7509,6 +7528,7 @@ pi.List.NestedSelect = (function(_super) {
         }
       };
     })(this));
+    return this;
   };
 
   NestedSelect.prototype.enable = function() {
@@ -7709,12 +7729,7 @@ pi.List.ScrollEnd = (function(_super) {
         return e.data.type === 'item_removed' || e.data.type === 'load';
       };
     })(this));
-    this.list.on('destroyed', ((function(_this) {
-      return function() {
-        _this.disable();
-        return false;
-      };
-    })(this)));
+    return this;
   };
 
   ScrollEnd.prototype.enable = function() {
@@ -7730,7 +7745,9 @@ pi.List.ScrollEnd = (function(_super) {
       return;
     }
     this.__debounce_id__ && clearTimeout(this.__debounce_id__);
-    this.scroll_object.off('scroll', this.scroll_listener());
+    if (this.scroll_object._disposed !== true) {
+      this.scroll_object.off('scroll', this.scroll_listener());
+    }
     this._scroll_listener = null;
     return this.enabled = false;
   };
@@ -7748,6 +7765,10 @@ pi.List.ScrollEnd = (function(_super) {
         return false;
       };
     })(this)), this));
+  };
+
+  ScrollEnd.prototype.dispose = function() {
+    return this.disable();
   };
 
   return ScrollEnd;
@@ -7803,6 +7824,7 @@ pi.List.Searchable = (function(_super) {
         return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
+    return this;
   };
 
   Searchable.prototype.item_updated = function(item) {
@@ -8018,6 +8040,7 @@ pi.List.Selectable = (function(_super) {
     })(this)), this, function(e) {
       return e.data.type !== 'item_added';
     });
+    return this;
   };
 
   Selectable.prototype.enable = function() {
@@ -8218,7 +8241,7 @@ pi.List.Sortable = (function(_super) {
       };
     }
     this.list.delegate_to(this, 'sort');
-    return this.list.on('update', ((function(_this) {
+    this.list.on('update', ((function(_this) {
       return function(e) {
         return _this.item_updated(e.data.item);
       };
@@ -8227,6 +8250,7 @@ pi.List.Sortable = (function(_super) {
         return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
+    return this;
   };
 
   Sortable.prototype.item_updated = function(item) {
@@ -8322,7 +8346,12 @@ pi.Plugin = (function(_super) {
 
   Plugin.prototype.initialize = function(instance) {
     instance[this.id] = this;
-    return instance["has_" + this.id] = true;
+    instance["has_" + this.id] = true;
+    return this;
+  };
+
+  Plugin.prototype.dispose = function() {
+    return true;
   };
 
   return Plugin;
@@ -9748,6 +9777,7 @@ pi.Base.Restful = (function(_super) {
         };
       })(this));
     }
+    return this;
   };
 
   Restful.prototype.bind = function(resource, render) {
@@ -9759,6 +9789,9 @@ pi.Base.Restful = (function(_super) {
       this.resource.off('create', this.resource_update());
     }
     this.resource = resource;
+    if (!this.resource) {
+      return;
+    }
     this.resource.on('update,create', this.resource_update());
     if (render) {
       return this.target.render(resource);
@@ -9776,6 +9809,10 @@ pi.Base.Restful = (function(_super) {
 
   Restful.prototype.on_update = function(data) {
     return this.target.render(data);
+  };
+
+  Restful.prototype.dispose = function() {
+    return this.bind(null);
   };
 
   return Restful;
@@ -9858,6 +9895,7 @@ pi.List.Restful = (function(_super) {
         return false;
       };
     })(this));
+    return this;
   };
 
   Restful.prototype.bind = function(resources, load, params) {
@@ -9967,6 +10005,13 @@ pi.List.Restful = (function(_super) {
     var item;
     if ((item = this.find_by_id(data.id))) {
       return this.list.update_item(item, data);
+    }
+  };
+
+  Restful.prototype.dispose = function() {
+    this.items_by_id = {};
+    if (this.resources != null) {
+      return this.resources.off(this.resource_update());
     }
   };
 
