@@ -8541,6 +8541,9 @@ pi.resources.Base = (function(_super) {
   };
 
   Base.add = function(el) {
+    if (this.get(el.id)) {
+      return;
+    }
     if (el.__temp__ === true) {
       this.__all_by_tid__[el.id] = el;
     } else {
@@ -8687,6 +8690,7 @@ pi.resources.Base = (function(_super) {
   Base.register_callback('initialize');
 
   Base.prototype.created = function(temp_id) {
+    this;
     return this.constructor.created(this, temp_id);
   };
 
@@ -9182,7 +9186,6 @@ pi.resources.REST = (function(_super) {
     if (params != null) {
       this.set(params, true);
       this.commit();
-      this.constructor.add(this);
       this.trigger('create');
       return this;
     }
