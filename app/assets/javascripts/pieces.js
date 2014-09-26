@@ -2752,7 +2752,7 @@ pi.Stepper = (function(_super) {
     if (val != null) {
       if ((this._max != null) && (val | 0) > this._max) {
         val = this._max;
-      } else if (this._min && (val | 0) < this._min) {
+      } else if ((this._min != null) && (val | 0) < this._min) {
         val = this._min;
       }
       return Stepper.__super__.value.call(this, this._prepare_value(val));
