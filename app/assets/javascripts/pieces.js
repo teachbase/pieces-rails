@@ -7848,7 +7848,7 @@ pi.List.ScrollEnd = (function(_super) {
     }
     this.list.on('update', this.scroll_listener(), this, (function(_this) {
       return function(e) {
-        return e.data.type === 'item_removed' || e.data.type === 'load';
+        return _this.enabled && (e.data.type === 'item_removed' || e.data.type === 'load');
       };
     })(this));
     return this;
@@ -8676,6 +8676,15 @@ pi.resources.Base = (function(_super) {
     }
   };
 
+  Base.from_data = function(data) {
+    if (data[this.resource_name] != null) {
+      data[this.resource_name] = this.build(data[this.resource_name]);
+    }
+    if (data[this.resources_name] != null) {
+      return data[this.resources_name] = this.load(data[this.resources_name]);
+    }
+  };
+
   Base.clear_all = function() {
     var el, _i, _len, _ref;
     _ref = this.__all__;
@@ -9247,6 +9256,12 @@ pi.resources.REST = (function(_super) {
 
   REST.prototype.wrap_attributes = false;
 
+  REST.can_create = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    return this.__deps__ = (this.__deps__ || (this.__deps__ = [])).concat(args);
+  };
+
   REST.prototype.__filter_params__ = false;
 
   REST.params = function() {
@@ -9303,6 +9318,14 @@ pi.resources.REST = (function(_super) {
             }
             return this._request(spec.path, spec.method, params).then((function(_this) {
               return function(response) {
+                var dep, _j, _len1, _ref1;
+                if (_this.__deps__ != null) {
+                  _ref1 = _this.__deps__;
+                  for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                    dep = _ref1[_j];
+                    dep.from_data(response);
+                  }
+                }
                 if (_this["on_" + spec.action] != null) {
                   return _this["on_" + spec.action](response);
                 } else {
@@ -9334,6 +9357,14 @@ pi.resources.REST = (function(_super) {
                 id: this.id
               }), this).then((function(_this) {
                 return function(response) {
+                  var dep, _k, _len2, _ref2;
+                  if (_this.constructor.__deps__ != null) {
+                    _ref2 = _this.constructor.__deps__;
+                    for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
+                      dep = _ref2[_k];
+                      dep.from_data(response);
+                    }
+                  }
                   if (_this["on_" + spec.action] != null) {
                     return _this["on_" + spec.action](response);
                   } else {
