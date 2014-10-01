@@ -3060,6 +3060,17 @@ pi.controllers.ListController = (function(_super) {
       params = {};
     }
     params = utils.merge(this.scope().params, params);
+    if (this._promise == null) {
+      this._promise = utils.resolved_promise();
+    }
+    return this._promise = this._promise.then((function(_this) {
+      return function() {
+        return _this._resource_query(params);
+      };
+    })(this));
+  };
+
+  ListController.prototype._resource_query = function(params) {
     this.view.loading(true);
     return this.resources.query(params).then(((function(_this) {
       return function(response) {
@@ -3177,20 +3188,31 @@ pi.controllers.Paginated = (function() {
   function Paginated() {}
 
   Paginated.included = function(base) {
-    var _query;
-    _query = base.prototype.query;
-    base.prototype.query = function(params) {
-      if (params == null) {
-        params = {};
+    base.prototype.query = function(_params, next_page) {
+      var params;
+      if (_params == null) {
+        _params = {};
       }
+      if (next_page == null) {
+        next_page = false;
+      }
+      params = utils.merge(this.scope().params, _params);
       if (params.page == null) {
         params.page = this._page = 1;
       }
       params.per_page = this.per_page;
-      return _query.call(this, params).then((function(_this) {
+      if (this._promise == null) {
+        this._promise = utils.resolved_promise();
+      }
+      return this._promise = this._promise.then((function(_this) {
         return function(data) {
-          _this.page_resolver(data);
-          return data;
+          if (next_page && _this.scope().is_full) {
+            return utils.rejected_promise(data);
+          }
+          return _this._resource_query(params).then(function(data) {
+            _this.page_resolver(data);
+            return data;
+          });
         };
       })(this));
     };
@@ -3213,12 +3235,16 @@ pi.controllers.Paginated = (function() {
     this._page = (this._page || 0) + 1;
     return this.query({
       page: this._page
-    }).then((function(_this) {
+    }, true).then(((function(_this) {
       return function(data) {
         _this.view.load(_this._parse_response(data));
         return data;
       };
-    })(this));
+    })(this)), ((function(_this) {
+      return function(data) {
+        return data;
+      };
+    })(this)));
   };
 
   return Paginated;
@@ -5907,6 +5933,31 @@ pi.utils = (function() {
     } else {
       return [obj];
     }
+  };
+
+  utils.as_promise = function(fun, resolved) {
+    if (resolved == null) {
+      resolved = true;
+    }
+    return new Promise(function(resolve, reject) {
+      if (resolved) {
+        return resolve(fun.call(null));
+      } else {
+        return reject(fun.call(null));
+      }
+    });
+  };
+
+  utils.resolved_promise = function(data) {
+    return new Promise(function(resolve) {
+      return resolve(data);
+    });
+  };
+
+  utils.rejected_promise = function(error) {
+    return new Promise(function(_, reject) {
+      return reject(error);
+    });
   };
 
   utils.debounce = function(period, fun, ths) {
@@ -9459,11 +9510,7 @@ pi.resources.REST = (function(_super) {
     var el;
     el = this.get(id);
     if (el != null) {
-      return new Promise((function(_this) {
-        return function(resolve) {
-          return resolve(el);
-        };
-      })(this));
+      return utils.resolved_promise(el);
     } else {
       return this.show({
         id: id
@@ -9475,11 +9522,7 @@ pi.resources.REST = (function(_super) {
     var el;
     el = this.get_by(params);
     if (el != null) {
-      return new Promise((function(_this) {
-        return function(resolve) {
-          return resolve(el);
-        };
-      })(this));
+      return utils.resolved_promise(el);
     } else {
       return this.show(params);
     }
@@ -10066,9 +10109,7 @@ pi.Base.Restful = (function(_super) {
         } else {
           return reject(res);
         }
-      }) : (matches = rest.match(_finder_rxp)) ? (resources = utils.get_path($r, matches[1]), resources != null ? resources.find(matches[2] | 0) : new Promise(function(resolve, reject) {
-        return reject();
-      })) : void 0;
+      }) : (matches = rest.match(_finder_rxp)) ? (resources = utils.get_path($r, matches[1]), resources != null ? resources.find(matches[2] | 0) : utils.rejected_promise()) : void 0;
       promise.then((function(_this) {
         return function(resource) {
           return _this.bind(resource, !_this.target.firstChild);
