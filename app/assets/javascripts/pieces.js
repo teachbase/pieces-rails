@@ -10174,7 +10174,7 @@ require('./list.restful');
 
 },{"./base.restful":89,"./list.restful":91}],91:[function(require,module,exports){
 'use strict';
-var pi, utils, _where_rxp,
+var pi, utils, _app_rxp, _where_rxp,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -10188,6 +10188,8 @@ utils = pi.utils;
 
 _where_rxp = /^(\w+)\.(where|find)\(([\w\s\,\:]+)\)(?:\.([\w]+))?$/i;
 
+_app_rxp = /^app\.([\.\w]+)\.(\w+)$/;
+
 pi.List.Restful = (function(_super) {
   __extends(Restful, _super);
 
@@ -10198,13 +10200,18 @@ pi.List.Restful = (function(_super) {
   Restful.prototype.id = 'restful';
 
   Restful.prototype.initialize = function(list) {
-    var el, key, matches, param, ref, resources, rest, val, _i, _len, _ref, _ref1;
+    var el, key, matches, param, ref, resources, rest, val, _i, _len, _name, _ref, _ref1;
     this.list = list;
     Restful.__super__.initialize.apply(this, arguments);
     this.items_by_id = {};
     this.listen_load = this.list.options.listen_load === true;
     if ((rest = this.list.options.rest) != null) {
-      if ((matches = rest.match(_where_rxp))) {
+      if ((matches = rest.match(_app_rxp))) {
+        ref = utils.get_path(pi.app, matches[1]);
+        if (ref != null) {
+          resources = typeof ref[_name = matches[2]] === "function" ? ref[_name]() : void 0;
+        }
+      } else if ((matches = rest.match(_where_rxp))) {
         rest = matches[1];
         ref = $r[utils.camelCase(rest)];
         if (ref != null) {
