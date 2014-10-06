@@ -1178,11 +1178,7 @@ pi.Form = (function(_super) {
     this._cache = {};
     this._value = {};
     this._invalids = [];
-    this.former = new pi.Former(this.node, {
-      serialize: !!this.options.serialize,
-      rails: this.options.rails,
-      clear_hidden: this.options.clear_hidden
-    });
+    this.former = new pi.Former(this.node, this.options);
     this.read_values();
     this.on(pi.InputEvent.Change, (function(_this) {
       return function(e) {
