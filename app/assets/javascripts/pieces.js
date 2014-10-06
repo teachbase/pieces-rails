@@ -2262,7 +2262,7 @@ pi.RadioGroup = (function(_super) {
         }
       });
       if (ref.length) {
-        return this.select_item(ref[0], true);
+        return this.select_item(ref[0]);
       }
     } else {
       return this.input.value();
