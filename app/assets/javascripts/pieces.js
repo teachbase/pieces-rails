@@ -478,13 +478,12 @@ pi.List = (function(_super) {
     } else {
       data.__list_index__ = index;
     }
-    item = this._renderer.render(data);
+    item = this._renderer.render(data, true, this);
     if (item == null) {
       return;
     }
     item.record || (item.record = {});
     item.is_list_item = true;
-    item.host = this;
     return item;
   };
 
@@ -2286,20 +2285,20 @@ pi.Renderers = {};
 pi.Renderers.Base = (function() {
   function Base() {}
 
-  Base.prototype.render = function(nod, piecified) {
+  Base.prototype.render = function(nod, piecified, host) {
     if (!(nod instanceof pi.Nod)) {
       return;
     }
-    return this._render(nod, nod.data(), piecified);
+    return this._render(nod, nod.data(), piecified, host);
   };
 
-  Base.prototype._render = function(nod, data, piecified) {
+  Base.prototype._render = function(nod, data, piecified, host) {
     if (piecified == null) {
       piecified = true;
     }
     if (!(nod instanceof pi.Base)) {
       if (piecified) {
-        nod = nod.piecify();
+        nod = nod.piecify(host);
       }
     }
     nod.record = data;
@@ -2341,13 +2340,13 @@ pi.Renderers.Jst = (function(_super) {
     this.templater = JST[template];
   }
 
-  Jst.prototype.render = function(data, piecified) {
+  Jst.prototype.render = function(data, piecified, host) {
     var nod;
     if (data instanceof pi.Nod) {
       return Jst.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(this.templater(data));
-      return this._render(nod, data, piecified);
+      return this._render(nod, data, piecified, host);
     }
   };
 
@@ -2385,13 +2384,13 @@ pi.Renderers.Mustache = (function(_super) {
     window.Mustache.parse(this.template);
   }
 
-  Mustache.prototype.render = function(data, piecified) {
+  Mustache.prototype.render = function(data, piecified, host) {
     var nod;
     if (data instanceof pi.Nod) {
       return Mustache.__super__.render.apply(this, arguments);
     } else {
       nod = pi.Nod.create(window.Mustache.render(this.template, data));
-      return this._render(nod, data, piecified);
+      return this._render(nod, data, piecified, host);
     }
   };
 
