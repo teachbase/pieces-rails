@@ -6958,11 +6958,10 @@ pi.Base.Renderable = (function(_super) {
     var nod;
     this.target.remove_children();
     if (data != null) {
-      nod = this.target._renderer.render(data);
-      nod.host = this.target;
+      nod = this.target._renderer.render(data, false);
       if (nod != null) {
         this.target.append(nod);
-        this.target.piecify();
+        this.target.piecify(this.target);
       } else {
         utils.error("failed to render data for: " + this.target.pid + "}");
       }
