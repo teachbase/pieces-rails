@@ -5600,7 +5600,7 @@ pi.utils = (function() {
 
   utils.digital_rxp = /^[\d\s-\(\)]+$/;
 
-  utils.html_rxp = /^\s*<.+>\s*$/m;
+  utils.html_rxp = /^\s*<[\s\S]+>\s*$/m;
 
   utils.esc_rxp = /[-[\]{}()*+?.,\\^$|#]/g;
 
@@ -5608,7 +5608,7 @@ pi.utils = (function() {
 
   utils.input_rxp = /^(input|select|textarea)$/i;
 
-  utils.trim_rxp = /^\s*(.*[^\s])\s*$/m;
+  utils.trim_rxp = /^\s*([\s\S]*[^\s])\s*$/m;
 
   utils.notsnake_rxp = /((?:^[^A-Z]|[A-Z])[^A-Z]*)/g;
 
