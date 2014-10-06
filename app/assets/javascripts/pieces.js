@@ -60,7 +60,7 @@ module.exports = pi.app;
 
 },{"../core/pi":48,"./pieces":17}],3:[function(require,module,exports){
 'use strict';
-var pi, utils,
+var pi, utils, _pass, _serialize,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -72,6 +72,14 @@ require('../events/input_events');
 
 utils = pi.utils;
 
+_pass = function(val) {
+  return val;
+};
+
+_serialize = function(val) {
+  return utils.serialize(val);
+};
+
 pi.BaseInput = (function(_super) {
   __extends(BaseInput, _super);
 
@@ -80,19 +88,23 @@ pi.BaseInput = (function(_super) {
   }
 
   BaseInput.prototype.postinitialize = function() {
-    return this.input || (this.input = this.node.nodeName === 'INPUT' ? this : this.find('input'));
+    this.input || (this.input = this.node.nodeName === 'INPUT' ? this : this.find('input'));
+    if (this.options.serialize === true) {
+      this._serializer = _serialize;
+    } else {
+      this._serializer = _pass;
+    }
+    if ((this.options.default_value != null) && !utils.serialize(this.value())) {
+      return this.value(this.options.default_value);
+    }
   };
 
   BaseInput.prototype.value = function(val) {
-    if (this === this.input) {
-      return BaseInput.__super__.value.apply(this, arguments);
+    if (val != null) {
+      this.input.node.value = val;
+      return this;
     } else {
-      if (val != null) {
-        this.input.node.value = val;
-        return this;
-      } else {
-        return this.input.node.value;
-      }
+      return this._serializer(this.input.node.value);
     }
   };
 
@@ -100,7 +112,11 @@ pi.BaseInput = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    this.input.value('');
+    if (this.options.default_value != null) {
+      this.value(this.options.default_value);
+    } else {
+      this.value('');
+    }
     if (!silent) {
       return this.trigger(pi.InputEvent.Clear);
     }
@@ -682,10 +698,14 @@ pi.Checkbox = (function(_super) {
   }
 
   Checkbox.prototype.postinitialize = function() {
+    this._true_val = this.options.true_value != null ? this.options.true_value : 1;
+    this._false_val = this.options.false_value != null ? this.options.false_value : 0;
     Checkbox.__super__.postinitialize.apply(this, arguments);
     this.attr('tabindex', 0);
-    this.__selected__ = false;
-    if (this.options.selected || this.hasClass('is-selected') || (this.value() | 0)) {
+    if (this.__selected__ == null) {
+      this.__selected__ = false;
+    }
+    if (this.options.selected || this.hasClass('is-selected') || this.value() == this._true_val) {
       this.select();
     }
     return this.on('click', (function(_this) {
@@ -703,7 +723,7 @@ pi.Checkbox = (function(_super) {
     if (!this.__selected__) {
       this.addClass('is-selected');
       this.__selected__ = true;
-      this.input.value(1);
+      this.input.value(this._true_val);
       if (!silent) {
         return this.trigger(pi.InputEvent.Change, true);
       }
@@ -717,7 +737,7 @@ pi.Checkbox = (function(_super) {
     if (this.__selected__) {
       this.removeClass('is-selected');
       this.__selected__ = false;
-      this.input.value(0);
+      this.input.value(this._false_val);
       if (!silent) {
         return this.trigger(pi.InputEvent.Change, false);
       }
@@ -735,7 +755,7 @@ pi.Checkbox = (function(_super) {
   Checkbox.prototype.value = function(val) {
     if (val != null) {
       Checkbox.__super__.value.apply(this, arguments);
-      this.__selected__ = !val;
+      this.__selected__ = val != this._true_val;
       return this.toggle_select(true);
     } else {
       return Checkbox.__super__.value.apply(this, arguments);
@@ -2501,8 +2521,6 @@ pi.SelectInput = (function(_super) {
     })(this));
     if (this.input.value()) {
       return this.value(utils.serialize(this.input.value()));
-    } else if (this.options.default_value != null) {
-      return this.value(this.options.default_value);
     } else if (this.placeholder.text() === '') {
       return this.placeholder.text(this.placeholder.options.placeholder);
     }
@@ -2530,12 +2548,10 @@ pi.SelectInput = (function(_super) {
   };
 
   SelectInput.prototype.clear = function() {
-    this.dropdown.clear_selection(true);
-    if (this.options.default_value != null) {
-      return this.value(this.options.default_value);
-    } else {
-      this.placeholder.text(this.placeholder.options.placeholder);
-      return SelectInput.__super__.clear.apply(this, arguments);
+    this.placeholder.text('');
+    SelectInput.__super__.clear.apply(this, arguments);
+    if (this.placeholder.text() === '') {
+      return this.placeholder.text(this.placeholder.options.placeholder);
     }
   };
 
