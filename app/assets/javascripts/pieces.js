@@ -231,7 +231,7 @@ pi.List = (function(_super) {
     return this._flush_buffer();
   };
 
-  List.prototype.data_provider = function(data, silent) {
+  List.prototype.data_provider = function(data, silent, remove) {
     var item, _i, _len;
     if (data == null) {
       data = null;
@@ -239,8 +239,11 @@ pi.List = (function(_super) {
     if (silent == null) {
       silent = false;
     }
+    if (remove == null) {
+      remove = true;
+    }
     if (this.items.length) {
-      this.clear(silent);
+      this.clear(silent, remove);
     }
     if (data != null) {
       for (_i = 0, _len = data.length; _i < _len; _i++) {
@@ -432,11 +435,19 @@ pi.List = (function(_super) {
     }
   };
 
-  List.prototype.clear = function(silent) {
+  List.prototype.clear = function(silent, remove) {
     if (silent == null) {
       silent = false;
     }
-    this.items_cont.detach_children();
+    if (remove == null) {
+      remove = true;
+    }
+    if (!remove) {
+      this.items_cont.detach_children();
+    }
+    if (remove) {
+      this.items_cont.remove_children();
+    }
     this.items.length = 0;
     if (!silent) {
       this.trigger('update', {
@@ -7421,7 +7432,7 @@ pi.List.Filterable = (function(_super) {
     this.filtered = false;
     this.list.removeClass('is-filtered');
     if (rollback) {
-      this.list.data_provider(this.all_items());
+      this.list.data_provider(this.all_items(), false, false);
     }
     this._all_items = null;
     this.matcher = null;
@@ -7452,7 +7463,7 @@ pi.List.Filterable = (function(_super) {
       }
       return _results;
     }).call(this);
-    this.list.data_provider(_buffer);
+    this.list.data_provider(_buffer, false, false);
     return this.list.trigger('filter_update');
   };
 
@@ -8114,7 +8125,7 @@ pi.List.Searchable = (function(_super) {
     items = this.all_items();
     this.clear_highlight(items);
     if (rollback) {
-      this.list.data_provider(items);
+      this.list.data_provider(items, false, false);
     }
     this._all_items = null;
     this.matcher = null;
@@ -8191,7 +8202,7 @@ pi.List.Searchable = (function(_super) {
       }
       return _results;
     }).call(this);
-    this.list.data_provider(_buffer);
+    this.list.data_provider(_buffer, false, false);
     if (highlight) {
       this.highlight(q);
     }
@@ -8504,7 +8515,7 @@ pi.List.Sortable = (function(_super) {
       return utils.keys_compare(a.record, b.record, sort_params);
     };
     this.list.items.sort(this._compare_fun);
-    this.list.data_provider(this.list.items.slice());
+    this.list.data_provider(this.list.items.slice(), false, false);
     return this.list.trigger('sort_update', sort_params);
   };
 
@@ -9167,13 +9178,17 @@ pi.resources.HasMany = (function() {
 
 },{"../../core":46,"../rest":81}],78:[function(require,module,exports){
 'use strict';
-var pi, utils;
+var pi, utils, _true;
 
 pi = require('../../core');
 
 require('../rest');
 
 utils = pi.utils;
+
+_true = function() {
+  return true;
+};
 
 pi.resources.HasOne = (function() {
   function HasOne() {}
@@ -9183,7 +9198,7 @@ pi.resources.HasOne = (function() {
   };
 
   HasOne.has_one = function(name, params) {
-    var bind_fun, resource_name, _base, _old;
+    var bind_fun, resource_name, _base, _old, _update_filter;
     if (params == null) {
       throw Error("Has one require at least 'source' param");
     }
@@ -9191,6 +9206,11 @@ pi.resources.HasOne = (function() {
     resource_name = params.source.resource_name;
     bind_fun = "bind_" + name;
     ((_base = this.prototype).__associations__ || (_base.__associations__ = [])).push(name);
+    if (typeof params.update_if === 'function') {
+      _update_filter = params.update_if;
+    } else {
+      _update_filter = _true;
+    }
     params.source.listen((function(_this) {
       return function(e) {
         var el, target, _i, _len, _ref, _results;
@@ -9215,7 +9235,9 @@ pi.resources.HasOne = (function() {
             } else if (e.type === 'create') {
               target[bind_fun](el, true);
             }
-            return target.trigger('update');
+            if (_update_filter(e, el)) {
+              return target.trigger('update', utils.wrap(name, _this[name]));
+            }
           }
         }
       };
@@ -9231,8 +9253,8 @@ pi.resources.HasOne = (function() {
       if (this._persisted && !this[name][params.foreign_key]) {
         this[name][params.foreign_key] = this.id;
       }
-      if (!silent) {
-        return this.trigger('update');
+      if (!(silent || !_update_filter(null, el))) {
+        return this.trigger('update', utils.wrap(name, this[name]));
       }
     };
     this.after_initialize(function() {
@@ -9919,6 +9941,8 @@ pi.BaseView = (function(_super) {
     if (controller_klass != null) {
       this.controller = new controller_klass(this);
       return pi.app.page.add_context(this.controller, this.options.main);
+    } else {
+      return utils.warning("controller not found", controller_klass);
     }
   };
 
@@ -10173,6 +10197,7 @@ pi.Base.Restful = (function(_super) {
     }
     this.resource = resource;
     if (!this.resource) {
+      this.target.render(null);
       return;
     }
     this.resource.on('update,create', this.resource_update());
