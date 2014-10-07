@@ -793,9 +793,9 @@ _method_rxp = /([\w\.]+)\.(\w+)/;
 
 _str_rxp = /^['"].+['"]$/;
 
-_condition_rxp = /^([\w\.\(\)@'"-=><]+)\s*\?\s*([\w\.\(\)@'"-]+)\s*(?:\:\s*([\w\.\(\)@'"-]+)\s*)$/;
+_condition_rxp = /^(.*\S)\s*\?\s*(@?[\w\.]+(?:\(.*\S\))?)\s*(?:\:\s*(@?[\w\.]+(?:\(.*\S\))?)\s*)$/;
 
-_fun_rxp = /^(@?\w+)(?:\.([\w\.]+)(?:\(([@\w\.\(\),'"-]+)\))?)?$/;
+_fun_rxp = /^(@?\w+)(?:\.([\w\.]+)(?:\((.+)\))?)?$/;
 
 _op_rxp = /(>|<|=)/;
 
@@ -1056,7 +1056,7 @@ pi.FormEvent = {
 
 },{"../../core":46}],13:[function(require,module,exports){
 'use strict';
-var pi, utils, _name_reg,
+var pi, utils, _name_reg, _true,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -1069,6 +1069,10 @@ require('./events/input_events');
 utils = pi.utils;
 
 _name_reg = /([^\/\\]+$)/;
+
+_true = function() {
+  return true;
+};
 
 pi.FileInput = (function(_super) {
   __extends(FileInput, _super);
@@ -1083,20 +1087,33 @@ pi.FileInput = (function(_super) {
   };
 
   FileInput.prototype.postinitialize = function() {
+    var _rxp;
     FileInput.__super__.postinitialize.apply(this, arguments);
-    this._multiple = !!this.input.attr('multiple');
+    this.multiple(!!this.options.multiple);
+    this.accept(this.options.accept);
+    if (this.options.rxp != null) {
+      _rxp = new RegExp(this.options.rxp, 'i');
+      this._filter = function(file) {
+        return _rxp.test(file.name);
+      };
+    } else {
+      this._filter = _true;
+    }
     this.input.attr('tabindex', '-1');
     return this.input.on('change', (function(_this) {
       return function(e) {
-        var file, _i, _len, _ref;
+        var f, file, _i, _len, _ref;
         e.cancel();
         _this._files.length = 0;
         if (_this.input.node.files == null) {
           if (_this.input.node.value) {
-            _this._files.push({
+            f = {
               name: _this.input.node.value.split(_name_reg)[1]
-            });
-            _this.trigger(pi.InputEvent.Change, _this.value());
+            };
+            if (_this._filter(f) === true) {
+              _this._files.push(f);
+              _this.trigger(pi.InputEvent.Change, _this.value());
+            }
           }
           return;
         }
@@ -1104,9 +1121,13 @@ pi.FileInput = (function(_super) {
           _ref = _this.input.node.files;
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             file = _ref[_i];
-            _this._files.push(file);
+            if (_this._filter(file)) {
+              _this._files.push(file);
+            }
           }
-          return _this.trigger(pi.InputEvent.Change, _this.value());
+          if (_this._files.length) {
+            return _this.trigger(pi.InputEvent.Change, _this.value());
+          }
         } else {
           return _this.clear();
         }
@@ -1120,6 +1141,15 @@ pi.FileInput = (function(_super) {
       return this.input.attr('multiple', '');
     } else {
       return this.input.attr('multiple', null);
+    }
+  };
+
+  FileInput.prototype.accept = function(value) {
+    this._accept = value;
+    if (value) {
+      return this.input.attr('accept', value);
+    } else {
+      return this.input.attr('accept', null);
     }
   };
 

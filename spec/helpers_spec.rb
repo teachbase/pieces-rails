@@ -39,9 +39,9 @@ describe HelpersController, type: :controller do
     it 'should render file_upload' do
       get :file_upload
       expect(response).to be_success
-      expect(response.body).to eq '<div class="pi-file-input-wrap pi" multiple="multiple" pid="fu">'+
+      expect(response.body).to eq '<div class="pi-file-input-wrap pi" data-multiple="true" pid="fu">'+
         'upload'+
-        '<input class="file-input" id="test" multiple="multiple" name="test" type="file" />'+
+        '<input class="file-input" id="test" name="test" type="file" />'+
         '</div>'
     end
   end

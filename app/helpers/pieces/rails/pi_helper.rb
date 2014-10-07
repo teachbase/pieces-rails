@@ -58,7 +58,7 @@ module Pieces
         merge_class! options,'pi-file-input-wrap pi'
         content_tag(:div, nil, options) do
           concat label
-          concat file_field_tag name, class: 'file-input', multiple: options[:multiple]
+          concat file_field_tag name, class: 'file-input'
         end
       end
 
