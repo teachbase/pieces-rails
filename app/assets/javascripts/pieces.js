@@ -8756,6 +8756,15 @@ pi.resources.Base = (function(_super) {
     return this.resource_name = singular || _singular(plural);
   };
 
+  Base.register_association = function(name) {
+    if (this.prototype.__associations__ != null) {
+      this.prototype.__associations__ = this.prototype.__associations__.slice();
+    } else {
+      this.prototype.__associations__ = [];
+    }
+    return this.prototype.__associations__.push(name);
+  };
+
   Base.load = function(data, silent) {
     var el, elements;
     if (silent == null) {
@@ -9003,6 +9012,11 @@ pi.resources.Base = (function(_super) {
     return res;
   };
 
+  Base.prototype.association = function(name) {
+    var _ref;
+    return ((_ref = this.__associations__) != null ? _ref.indexOf(name) : void 0) > -1;
+  };
+
   Base.prototype.set = function(params, silent) {
     var key, type, val, _changed, _old_id, _was_id;
     _changed = false;
@@ -9085,7 +9099,7 @@ pi.resources.HasMany = (function() {
   };
 
   HasMany.has_many = function(name, params) {
-    var _base, _old;
+    var _old;
     if (params == null) {
       throw Error("Has many require at least 'source' param");
     }
@@ -9093,7 +9107,7 @@ pi.resources.HasMany = (function() {
       path: ":resources/:id/" + name,
       method: 'get'
     });
-    ((_base = this.prototype).__associations__ || (_base.__associations__ = [])).push(name);
+    this.register_association(name);
     this.prototype[name] = function() {
       var default_scope, options;
       if (this["__" + name + "__"] == null) {
@@ -9198,14 +9212,14 @@ pi.resources.HasOne = (function() {
   };
 
   HasOne.has_one = function(name, params) {
-    var bind_fun, resource_name, _base, _old, _update_filter;
+    var bind_fun, resource_name, _old, _update_filter;
     if (params == null) {
       throw Error("Has one require at least 'source' param");
     }
     params.foreign_key || (params.foreign_key = "" + this.resource_name + "_id");
     resource_name = params.source.resource_name;
     bind_fun = "bind_" + name;
-    ((_base = this.prototype).__associations__ || (_base.__associations__ = [])).push(name);
+    this.register_association(name);
     if (typeof params.update_if === 'function') {
       _update_filter = params.update_if;
     } else {
@@ -9214,13 +9228,16 @@ pi.resources.HasOne = (function() {
     params.source.listen((function(_this) {
       return function(e) {
         var el, target, _i, _len, _ref, _results;
+        if (!_this.all().length) {
+          return;
+        }
         e = e.data;
         if (e.type === 'load') {
           _ref = params.source.all();
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             el = _ref[_i];
-            if (el[params.foreign_key] && (target = _this.get(el[params.foreign_key]))) {
+            if (el[params.foreign_key] && (target = _this.get(el[params.foreign_key])) && target.association(name)) {
               _results.push(target[bind_fun](el));
             } else {
               _results.push(void 0);
@@ -9229,7 +9246,7 @@ pi.resources.HasOne = (function() {
           return _results;
         } else {
           el = e[resource_name];
-          if (el[params.foreign_key] && (target = _this.get(el[params.foreign_key]))) {
+          if (el[params.foreign_key] && (target = _this.get(el[params.foreign_key])) && target.association(name)) {
             if (e.type === 'destroy') {
               delete _this[name];
             } else if (e.type === 'create') {
