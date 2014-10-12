@@ -304,15 +304,22 @@ pi.List = (function(_super) {
     return item;
   };
 
-  List.prototype.remove_item = function(item, silent) {
+  List.prototype.remove_item = function(item, silent, destroy) {
     var index;
     if (silent == null) {
       silent = false;
     }
+    if (destroy == null) {
+      destroy = true;
+    }
     index = this.items.indexOf(item);
     if (index > -1) {
       this.items.splice(index, 1);
-      this._destroy_item(item);
+      if (destroy) {
+        this._destroy_item(item);
+      } else {
+        item.detach();
+      }
       this._check_empty();
       this._need_update_indeces = true;
       if (!silent) {
@@ -7403,7 +7410,7 @@ pi.List.Filterable = (function(_super) {
     if (this.matcher(item)) {
       return;
     } else if (this.filtered) {
-      this.list.remove_item(item, true);
+      this.list.remove_item(item, true, false);
     }
     return false;
   };
@@ -8065,7 +8072,7 @@ pi.List.Searchable = (function(_super) {
       this.highlight_item(this._prevq, item);
       return;
     } else if (this.searching) {
-      this.list.remove_item(item, true);
+      this.list.remove_item(item, true, false);
     }
     return false;
   };
