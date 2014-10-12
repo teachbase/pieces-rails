@@ -8703,7 +8703,7 @@ pi.resources.Association = (function(_super) {
   Association.prototype.on_destroy = function(el) {
     if (this.options.copy === false) {
       this.trigger('destroy', this._wrap(el));
-      return this.remove(el, true);
+      return this.remove(el, true, false);
     } else {
       return Association.__super__.on_destroy.apply(this, arguments);
     }
@@ -8908,7 +8908,10 @@ pi.resources.Base = (function(_super) {
     return false;
   };
 
-  Base.remove = function(el, silent) {
+  Base.remove = function(el, silent, disposed) {
+    if (disposed == null) {
+      disposed = true;
+    }
     if (this.__all_by_id__[el.id] != null) {
       delete this.__all_by_id__[el.id];
     } else {
@@ -8918,7 +8921,9 @@ pi.resources.Base = (function(_super) {
     if (!silent) {
       this.trigger('destroy', this._wrap(el));
     }
-    el.dispose();
+    if (disposed) {
+      el.dispose();
+    }
     return true;
   };
 
