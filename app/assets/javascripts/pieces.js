@@ -374,6 +374,7 @@ pi.List = (function(_super) {
     }
     item.mergeClasses(new_item);
     item.piecify();
+    item.postinitialize();
     if (!silent) {
       this.trigger('update', {
         type: 'item_updated',
