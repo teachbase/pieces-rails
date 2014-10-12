@@ -8691,7 +8691,8 @@ pi.resources.Association = (function(_super) {
 
   Association.prototype.on_destroy = function(el) {
     if (this.options.copy === false) {
-      return this.trigger('destroy', this._wrap(el));
+      this.trigger('destroy', this._wrap(el));
+      return this.remove(el, true);
     } else {
       return Association.__super__.on_destroy.apply(this, arguments);
     }
@@ -8981,6 +8982,9 @@ pi.resources.Base = (function(_super) {
 
   Base.prototype.dispose = function() {
     var key, _;
+    if (this.disposed) {
+      return;
+    }
     for (key in this) {
       if (!__hasProp.call(this, key)) continue;
       _ = this[key];
@@ -9406,7 +9410,7 @@ pi.resources.REST = (function(_super) {
 
   REST.set_resource = function(plural, singular) {
     REST.__super__.constructor.set_resource.apply(this, arguments);
-    return this.routes({
+    this.routes({
       collection: [
         {
           action: 'show',
@@ -9424,7 +9428,7 @@ pi.resources.REST = (function(_super) {
           path: ":resources/:id",
           method: "patch"
         }, {
-          action: 'destroy',
+          action: '__destroy',
           path: ":resources/:id",
           method: "delete"
         }, {
@@ -9434,6 +9438,7 @@ pi.resources.REST = (function(_super) {
         }
       ]
     });
+    return this.prototype["destroy_path"] = ":resources/:id";
   };
 
   REST.routes = function(data) {
@@ -9618,10 +9623,24 @@ pi.resources.REST = (function(_super) {
     this._snapshot = data;
   }
 
+  REST.prototype.destroy = function() {
+    if (this._persisted) {
+      return this.__destroy();
+    } else {
+      return utils.as_promise((function(_this) {
+        return function() {
+          return _this.remove();
+        };
+      })(this));
+    }
+  };
+
   REST.prototype.on_destroy = function(data) {
     this.constructor.remove(this);
     return data;
   };
+
+  REST.alias('on___destroy', 'on_destroy');
 
   REST.prototype.on_all = function(data) {
     var params;
