@@ -6383,6 +6383,9 @@ pi.utils.matchers = (function() {
     }
     return function(item) {
       var matcher, _any;
+      if (item == null) {
+        return false;
+      }
       _any = false;
       for (key in obj) {
         matcher = obj[key];
