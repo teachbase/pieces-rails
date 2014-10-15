@@ -921,7 +921,12 @@ pi.Compiler = (function() {
       }
     } catch (_error) {
       error = _error;
-      return utils.error(error, error.stack);
+      return utils.error(error, {
+        backtrace: error.stack,
+        target: target,
+        method: method_chain,
+        args: fixed_args
+      });
     }
   };
 
@@ -7015,7 +7020,7 @@ pi.Base.Renderable = (function(_super) {
         this.target.append(nod);
         this.target.piecify(this.target);
       } else {
-        utils.error("failed to render data for: " + this.target.pid + "}");
+        utils.error("failed to render data for: " + this.target.pid + "}", data);
       }
     }
     return this.target;
@@ -8712,6 +8717,7 @@ pi.resources.Association = (function(_super) {
   Association.prototype.on_create = function(el) {
     var view_item;
     if ((view_item = this.get(el.id) || this.get(el.__tid__))) {
+      this.created(view_item, el.__tid__);
       if (this.options.copy === false) {
         return this.trigger('create', this._wrap(el));
       } else {
@@ -10232,7 +10238,7 @@ pi.Base.Restful = (function(_super) {
         };
       })(this), (function(_this) {
         return function() {
-          return utils.error("resource not found: " + rest);
+          return utils.error("resource not found: " + rest, _this.target.options.rest);
         };
       })(this));
     }
