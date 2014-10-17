@@ -2566,7 +2566,9 @@ pi.SelectInput = (function(_super) {
     })(this));
     this.on('blur', (function(_this) {
       return function() {
-        return _this.dropdown.hide();
+        return after(100, function() {
+          return _this.dropdown.hide();
+        });
       };
     })(this));
     if (this.input.value()) {
@@ -9087,6 +9089,13 @@ pi.resources.Base = (function(_super) {
     return this.constructor.trigger(e, this.constructor._wrap(this));
   };
 
+  Base.prototype.trigger_assoc_event = function(name, type, data) {
+    if (typeof this["on_" + name + "_update"] === 'function') {
+      this["on_" + name + "_update"].call(this, type, data);
+    }
+    return this.trigger('update', utils.wrap(name, true));
+  };
+
   return Base;
 
 })(pi.EventDispatcher);
@@ -9109,13 +9118,21 @@ require('./modules');
 
 },{"./association":74,"./base":75,"./modules":79,"./rest":81,"./view":82}],77:[function(require,module,exports){
 'use strict';
-var pi, utils;
+var pi, utils, _false, _true;
 
 pi = require('../../core');
 
 require('../rest');
 
 utils = pi.utils;
+
+_true = function() {
+  return true;
+};
+
+_false = function() {
+  return false;
+};
 
 pi.resources.HasMany = (function() {
   function HasMany() {}
@@ -9125,7 +9142,7 @@ pi.resources.HasMany = (function() {
   };
 
   HasMany.has_many = function(name, params) {
-    var _old;
+    var _old, _update_filter;
     if (params == null) {
       throw Error("Has many require at least 'source' param");
     }
@@ -9134,6 +9151,11 @@ pi.resources.HasMany = (function() {
       method: 'get'
     });
     this.register_association(name);
+    if (typeof params.update_if === 'function') {
+      _update_filter = params.update_if;
+    } else if (params.update_if === true) {
+      _update_filter = _true;
+    }
     this.prototype[name] = function() {
       var default_scope, options;
       if (this["__" + name + "__"] == null) {
@@ -9161,6 +9183,17 @@ pi.resources.HasMany = (function() {
         this["__" + name + "__"] = new pi.resources.Association(params.source, options.scope, options);
         if (options.scope !== false) {
           this["__" + name + "__"].load(params.source.where(options.scope));
+        }
+        if (params.update_if) {
+          this["__" + name + "__"].listen((function(_this) {
+            return function(e) {
+              var data;
+              data = e.data[params.source.resources_name] || e.data[params.source.resource_name];
+              if (_update_filter(e.data.type, data)) {
+                return _this.trigger_assoc_event(name, e.data.type, data);
+              }
+            };
+          })(this));
         }
       }
       return this["__" + name + "__"];
@@ -9218,7 +9251,7 @@ pi.resources.HasMany = (function() {
 
 },{"../../core":46,"../rest":81}],78:[function(require,module,exports){
 'use strict';
-var pi, utils, _true;
+var pi, utils, _false, _true;
 
 pi = require('../../core');
 
@@ -9228,6 +9261,10 @@ utils = pi.utils;
 
 _true = function() {
   return true;
+};
+
+_false = function() {
+  return false;
 };
 
 pi.resources.HasOne = (function() {
@@ -9248,8 +9285,10 @@ pi.resources.HasOne = (function() {
     this.register_association(name);
     if (typeof params.update_if === 'function') {
       _update_filter = params.update_if;
-    } else {
+    } else if (params.update_if === true) {
       _update_filter = _true;
+    } else {
+      _update_filter = _false;
     }
     params.source.listen((function(_this) {
       return function(e) {
@@ -9279,7 +9318,7 @@ pi.resources.HasOne = (function() {
               target[bind_fun](el, true);
             }
             if (_update_filter(e, el)) {
-              return target.trigger('update', utils.wrap(name, _this[name]));
+              return target.trigger_assoc_event(name, e.type, utils.wrap(name, _this[name]));
             }
           }
         }
@@ -9297,7 +9336,7 @@ pi.resources.HasOne = (function() {
         this[name][params.foreign_key] = this.id;
       }
       if (!(silent || !_update_filter(null, el))) {
-        return this.trigger('update', utils.wrap(name, this[name]));
+        return this.trigger_assoc_event(name, 'create', utils.wrap(name, this[name]));
       }
     };
     this.after_initialize(function() {
