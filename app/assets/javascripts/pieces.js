@@ -9985,6 +9985,10 @@ pi.resources.View = (function(_super) {
     return View.__super__.trigger.call(this, "update", data);
   };
 
+  View.prototype.off = function(callback) {
+    return View.__super__.off.call(this, "update", callback);
+  };
+
   return View;
 
 })(pi.EventDispatcher);
