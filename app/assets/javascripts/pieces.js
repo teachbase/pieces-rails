@@ -3274,7 +3274,7 @@ pi.controllers.Paginated = (function() {
       return this._promise = this._promise.then((function(_this) {
         return function(data) {
           if (next_page && _this.scope().is_full) {
-            return utils.rejected_promise(data);
+            return utils.resolved_promise();
           }
           return _this._resource_query(params).then(function(data) {
             _this.page_resolver(data);
@@ -3304,11 +3304,9 @@ pi.controllers.Paginated = (function() {
       page: this._page
     }, true).then(((function(_this) {
       return function(data) {
-        _this.view.load(_this._parse_response(data));
-        return data;
-      };
-    })(this)), ((function(_this) {
-      return function(data) {
+        if (data != null) {
+          _this.view.load(_this._parse_response(data));
+        }
         return data;
       };
     })(this)));
