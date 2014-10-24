@@ -10371,6 +10371,7 @@ pi.List.Restful = (function(_super) {
     Restful.__super__.initialize.apply(this, arguments);
     this.items_by_id = {};
     this.listen_load = this.list.options.listen_load === true;
+    this.listen_create = this.list.options.listen_create != null ? this.list.options.listen_create : this.listen_load;
     if ((rest = this.list.options.rest) != null) {
       if ((matches = rest.match(_app_rxp))) {
         ref = utils.get_path(pi.app, matches[1]);
@@ -10453,8 +10454,10 @@ pi.List.Restful = (function(_super) {
 
   Restful.prototype.find_by_id = function(id) {
     var items;
-    if (this.items_by_id[id] != null) {
-      return this.items_by_id[id];
+    if (this.listen_load) {
+      if (this.items_by_id[id] != null) {
+        return this.items_by_id[id];
+      }
     }
     items = this.list.where({
       record: {
@@ -10500,6 +10503,9 @@ pi.List.Restful = (function(_super) {
 
   Restful.prototype.on_create = function(data) {
     var item;
+    if (!this.listen_create) {
+      return;
+    }
     if (!this.find_by_id(data.id)) {
       return this.items_by_id[data.id] = this.list.add_item(data);
     } else if (data.__tid__ && (item = this.find_by_id(data.__tid__))) {
