@@ -8882,7 +8882,7 @@ pi.resources.Base = (function(_super) {
       }
       return el;
     } else {
-      return el.set(data);
+      return el.set(data, silent);
     }
   };
 
@@ -9951,7 +9951,7 @@ pi.resources.View = (function(_super) {
       }
       return el;
     } else {
-      return el.set(data);
+      return el.set(data, silent);
     }
   };
 
