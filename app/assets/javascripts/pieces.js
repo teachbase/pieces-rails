@@ -6419,6 +6419,7 @@ pi.utils.matchers = (function() {
 
   matchers.nod = function(string) {
     var query, regexp, selectors, _ref;
+    string = utils.escapeRegexp(string);
     if (string.indexOf(":") > 0) {
       _ref = string.split(":"), selectors = _ref[0], query = _ref[1];
       regexp = new RegExp(query, 'i');
@@ -7875,17 +7876,20 @@ pi.List.NestedSelect = (function(_super) {
     }
   };
 
-  NestedSelect.prototype.clear_selection = function(silent) {
+  NestedSelect.prototype.clear_selection = function(silent, force) {
     var item, _base, _i, _len, _ref;
     if (silent == null) {
       silent = false;
     }
-    this.selectable.clear_selection(silent);
+    if (force == null) {
+      force = false;
+    }
+    this.selectable.clear_selection(silent, force);
     _ref = this.list.find_cut('.pi-list');
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
       if (typeof (_base = item._nod).clear_selection === "function") {
-        _base.clear_selection(silent);
+        _base.clear_selection(silent, force);
       }
     }
     if (!silent) {
@@ -7893,19 +7897,27 @@ pi.List.NestedSelect = (function(_super) {
     }
   };
 
-  NestedSelect.prototype.select_all = function() {
+  NestedSelect.prototype.select_all = function(silent, force) {
     var item, _base, _i, _len, _ref, _selected;
-    this.selectable.select_all(true);
+    if (silent == null) {
+      silent = false;
+    }
+    if (force == null) {
+      force = false;
+    }
+    this.selectable.select_all(true, force);
     _ref = this.list.find_cut('.pi-list');
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
       if (typeof (_base = item._nod).select_all === "function") {
-        _base.select_all(true);
+        _base.select_all(true, force);
       }
     }
-    _selected = this.selected();
-    if (_selected.length) {
-      return this.list.trigger('selected', _selected);
+    if (!silent) {
+      _selected = this.selected();
+      if (_selected.length) {
+        return this.list.trigger('selected', _selected);
+      }
     }
   };
 
@@ -8037,7 +8049,7 @@ _selector_regexp = /[\.#a-z\s\[\]=\"-_,]/i;
 
 _is_continuation = function(prev, query) {
   var _ref;
-  return ((_ref = query.match(prev)) != null ? _ref.index : void 0) === 0;
+  return ((_ref = utils.escapeRegexp(query).match(utils.escapeRegexp(prev))) != null ? _ref.index : void 0) === 0;
 };
 
 pi.List.Searchable = (function(_super) {
@@ -8358,30 +8370,40 @@ pi.List.Selectable = (function(_super) {
     }
   };
 
-  Selectable.prototype.clear_selection = function(silent) {
+  Selectable.prototype.clear_selection = function(silent, force) {
     var item, _i, _len, _ref;
     if (silent == null) {
       silent = false;
     }
+    if (force == null) {
+      force = false;
+    }
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      this.deselect_item(item);
+      if (item.enabled || force) {
+        this.deselect_item(item);
+      }
     }
     if (!silent) {
       return this.list.trigger('selection_cleared');
     }
   };
 
-  Selectable.prototype.select_all = function(silent) {
+  Selectable.prototype.select_all = function(silent, force) {
     var item, _i, _len, _ref;
     if (silent == null) {
       silent = false;
     }
+    if (force == null) {
+      force = false;
+    }
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      this.select_item(item);
+      if (item.enabled || force) {
+        this.select_item(item);
+      }
     }
     if (this.selected().length && !silent) {
       return this.list.trigger('selected', this.selected());
