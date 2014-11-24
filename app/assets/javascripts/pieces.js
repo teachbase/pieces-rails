@@ -2491,7 +2491,7 @@ pi.SearchInput = (function(_super) {
 
   SearchInput.prototype.postinitialize = function() {
     SearchInput.__super__.postinitialize.apply(this, arguments);
-    return this.input.on('keyup', debounce(300, this._query, this));
+    return this.input.on('keyup', utils.debounce(this.options.debounce || 300, this._query, this));
   };
 
   SearchInput.prototype._query = function() {
@@ -2566,7 +2566,7 @@ pi.SelectInput = (function(_super) {
     })(this));
     this.on('blur', (function(_this) {
       return function() {
-        return after(100, function() {
+        return _this._hide_tid = after(100, function() {
           return _this.dropdown.hide();
         });
       };
@@ -2597,6 +2597,13 @@ pi.SelectInput = (function(_super) {
     } else {
       return SelectInput.__super__.value.apply(this, arguments);
     }
+  };
+
+  SelectInput.prototype.dispose = function() {
+    if (this._hide_tid != null) {
+      clearTimeout(this._hide_tid);
+    }
+    return SelectInput.__super__.dispose.apply(this, arguments);
   };
 
   SelectInput.prototype.clear = function() {
@@ -3119,6 +3126,7 @@ pi.controllers.ListController = (function(_super) {
 
   ListController.prototype.initialize = function() {
     this.scope().set(this.default_scope);
+    this._promise = utils.resolved_promise();
     return ListController.__super__.initialize.apply(this, arguments);
   };
 
@@ -3132,7 +3140,11 @@ pi.controllers.ListController = (function(_super) {
     }
     return this._promise = this._promise.then((function(_this) {
       return function() {
-        return _this._resource_query(params);
+        if (_this.scope().is_full) {
+          return utils.resolved_promise();
+        } else {
+          return _this._resource_query(params);
+        }
       };
     })(this));
   };
@@ -3170,17 +3182,17 @@ pi.controllers.ListController = (function(_super) {
     this.scope().set({
       q: q
     });
-    if (this.scope().is_full) {
-      return this.view.search(q);
-    } else {
-      return this.query().then((function(_this) {
-        return function(data) {
+    return this.query().then((function(_this) {
+      return function(data) {
+        if (data != null) {
           _this.view.reload(_this._parse_response(data));
           _this.view.searched(q);
-          return data;
-        };
-      })(this));
-    }
+        } else {
+          _this.view.search(q);
+        }
+        return data;
+      };
+    })(this));
   };
 
   ListController.prototype.sort = function(params) {
@@ -3192,17 +3204,17 @@ pi.controllers.ListController = (function(_super) {
       sort: params
     };
     this.scope().set(sort_params);
-    if (this.scope().is_full) {
-      return this.view.sort(params);
-    } else {
-      return this.query().then((function(_this) {
-        return function(data) {
+    return this.query().then((function(_this) {
+      return function(data) {
+        if (data != null) {
           _this.view.reload(_this._parse_response(data));
           _this.view.sorted(params);
-          return data;
-        };
-      })(this));
-    }
+        } else {
+          _this.view.sort(params);
+        }
+        return data;
+      };
+    })(this));
   };
 
   ListController.prototype.filter = function(params) {
@@ -3214,17 +3226,17 @@ pi.controllers.ListController = (function(_super) {
       filter: params
     };
     this.scope().set(filter_params);
-    if (this.scope().is_full) {
-      return this.view.filter(params);
-    } else {
-      return this.query().then((function(_this) {
-        return function(data) {
+    return this.query().then((function(_this) {
+      return function(data) {
+        if (data != null) {
           _this.view.reload(_this._parse_response(data));
           _this.view.filtered(params);
-          return data;
-        };
-      })(this));
-    }
+        } else {
+          _this.view.filter(params);
+        }
+        return data;
+      };
+    })(this));
   };
 
   return ListController;
@@ -3273,13 +3285,14 @@ pi.controllers.Paginated = (function() {
       }
       return this._promise = this._promise.then((function(_this) {
         return function(data) {
-          if (next_page && _this.scope().is_full) {
+          if (_this.scope().is_full) {
             return utils.resolved_promise();
+          } else {
+            return _this._resource_query(params).then(function(data) {
+              _this.page_resolver(data);
+              return data;
+            });
           }
-          return _this._resource_query(params).then(function(data) {
-            _this.page_resolver(data);
-            return data;
-          });
         };
       })(this));
     };
@@ -6419,7 +6432,6 @@ pi.utils.matchers = (function() {
 
   matchers.nod = function(string) {
     var query, regexp, selectors, _ref;
-    string = utils.escapeRegexp(string);
     if (string.indexOf(":") > 0) {
       _ref = string.split(":"), selectors = _ref[0], query = _ref[1];
       regexp = new RegExp(query, 'i');
@@ -8218,7 +8230,7 @@ pi.List.Searchable = (function(_super) {
     }
     scope = _is_continuation(this._prevq, q) ? this.list.items.slice() : this.all_items();
     this._prevq = q;
-    this.matcher = this.matcher_factory(q);
+    this.matcher = this.matcher_factory(utils.escapeRegexp(q));
     _buffer = (function() {
       var _i, _len, _results;
       _results = [];
