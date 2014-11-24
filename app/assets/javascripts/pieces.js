@@ -10179,9 +10179,8 @@ pi.BaseView.Listable = (function() {
   Listable.prototype.searched = function(query) {
     utils.debug("loaded search " + query);
     this.list.searchable.start_search();
-    if (query) {
-      return this.list.highlight(query);
-    } else {
+    this.list.highlight(query);
+    if (!query) {
       return this.list.searchable.stop_search(false);
     }
   };
