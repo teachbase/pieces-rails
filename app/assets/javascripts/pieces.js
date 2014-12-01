@@ -3007,7 +3007,7 @@ pi.Guesser.rules_for('toggle_button', ['pi-toggle-button']);
 
 },{"../core":46,"../plugins/base/selectable":63,"./base/button":4}],32:[function(require,module,exports){
 'use strict';
-var app, pi, utils,
+var History, pi, utils,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -3015,9 +3015,9 @@ pi = require('../core');
 
 utils = pi.utils;
 
-pi.controllers = {};
+History = require('../core/utils/history');
 
-app = pi.app;
+pi.controllers = {};
 
 pi.controllers.Base = (function(_super) {
   __extends(Base, _super);
@@ -3031,13 +3031,111 @@ pi.controllers.Base = (function(_super) {
 
   Base.prototype.id = 'base';
 
-  function Base(view) {
+  function Base(view, host_context) {
     this.view = view;
+    this.host_context = host_context;
     this._initialized = false;
+    this._contexts = {};
+    this.context_id = null;
+    this._history = new History();
   }
 
+  Base.prototype.add_context = function(controller, main) {
+    this._contexts[controller.id] = controller;
+    controller.host_context = this;
+    if (main) {
+      return this._main_context_id = controller.id;
+    }
+  };
+
   Base.prototype.initialize = function() {
-    return this._initialized = true;
+    this._initialized = true;
+    if (this._main_context_id) {
+      return this.switch_context(null, this._main_context_id);
+    } else {
+      return utils.resolved_promise();
+    }
+  };
+
+  Base.prototype.switch_context = function(from, to, data, exit) {
+    var new_context, promise;
+    if (data == null) {
+      data = {};
+    }
+    if (exit == null) {
+      exit = false;
+    }
+    if (from && from !== this.context_id) {
+      utils.warning("trying to switch from non-active context");
+      return utils.rejected_promise();
+    }
+    if (!to || (this.context_id === to)) {
+      return;
+    }
+    if (!this._contexts[to]) {
+      utils.warning("undefined context: " + to);
+      return utils.rejected_promise();
+    }
+    utils.info("context switch: " + from + " -> " + to);
+    new_context = this._contexts[to];
+    promise = (this.context != null) && exit && (typeof this.context.preunload === 'function') ? this.context.preunload() : utils.resolved_promise();
+    return promise.then((function(_this) {
+      return function() {
+        if (!exit && (new_context.preload != null) && (typeof new_context.preload === 'function')) {
+          return new_context.preload();
+        } else {
+          return utils.resolved_promise();
+        }
+      };
+    })(this)).then((function(_this) {
+      return function() {
+        if (_this.context != null) {
+          if (exit) {
+            _this.context.unload();
+          } else {
+            _this.context.switched();
+          }
+        }
+        data = _this.wrap_context_data(_this.context, data);
+        if ((from != null) && !exit) {
+          _this._history.push(from);
+        }
+        _this.context = _this._contexts[to];
+        _this.context_id = to;
+        if (exit) {
+          return _this.context.reload(data);
+        } else {
+          return _this.context.load(data);
+        }
+      };
+    })(this));
+  };
+
+  Base.prototype.switch_to = function(to, data) {
+    return this.switch_context(this.context_id, to, data);
+  };
+
+  Base.prototype.switch_back = function(data) {
+    if (this.context != null) {
+      return this.switch_context(this.context_id, this._history.pop(), data, true);
+    } else {
+      return utils.resolved_promise();
+    }
+  };
+
+  Base.prototype.wrap_context_data = function(context, data) {
+    var res;
+    res = {};
+    if (context != null) {
+      res.context = context.id;
+    }
+    if ((context != null ? context.data_wrap : void 0) != null) {
+      res.data = {};
+      res.data[context.data_wrap] = data;
+    } else {
+      res.data = data;
+    }
+    return res;
   };
 
   Base.prototype.load = function(context_data) {
@@ -3060,11 +3158,23 @@ pi.controllers.Base = (function(_super) {
   };
 
   Base.prototype.exit = function(data) {
-    return app.page.switch_back(data);
+    return this.host_context.switch_back(data);
   };
 
   Base.prototype["switch"] = function(to, data) {
-    return app.page.switch_context(this.id, to, data);
+    return this.host_context.switch_context(this.id, to, data);
+  };
+
+  Base.prototype.dispose = function() {
+    var _ref;
+    this.host_context = void 0;
+    this.context = void 0;
+    this.context_id = void 0;
+    if ((_ref = this.view) != null) {
+      _ref.dispose();
+    }
+    this._contexts = {};
+    return this._history.clear();
   };
 
   return Base;
@@ -3073,7 +3183,7 @@ pi.controllers.Base = (function(_super) {
 
 
 
-},{"../core":46}],33:[function(require,module,exports){
+},{"../core":46,"../core/utils/history":51}],33:[function(require,module,exports){
 'use strict';
 require('./base');
 
@@ -3473,7 +3583,7 @@ pi.controllers.Scoped = (function() {
 
 },{"../../core":46,"../base":32}],38:[function(require,module,exports){
 'use strict';
-var History, pi, utils,
+var pi, utils,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -3483,103 +3593,16 @@ require('./base');
 
 utils = pi.utils;
 
-History = require('../core/utils/history');
-
 pi.controllers.Page = (function(_super) {
   __extends(Page, _super);
 
   function Page() {
-    this._contexts = {};
-    this.context_id = null;
-    this._history = new History();
+    return Page.__super__.constructor.apply(this, arguments);
   }
-
-  Page.prototype.add_context = function(controller, main) {
-    this._contexts[controller.id] = controller;
-    if (main) {
-      return this._main_context_id = controller.id;
-    }
-  };
-
-  Page.prototype.initialize = function() {
-    return this.switch_context(null, this._main_context_id);
-  };
-
-  Page.prototype.wrap_context_data = function(context, data) {
-    var res;
-    res = {};
-    if (context != null) {
-      res.context = context.id;
-    }
-    if ((context != null ? context.data_wrap : void 0) != null) {
-      res.data = {};
-      res.data[context.data_wrap] = data;
-    } else {
-      res.data = data;
-    }
-    return res;
-  };
-
-  Page.prototype.switch_context = function(from, to, data, exit) {
-    if (data == null) {
-      data = {};
-    }
-    if (exit == null) {
-      exit = false;
-    }
-    if (from && from !== this.context_id) {
-      utils.warning("trying to switch from non-active context");
-      return;
-    }
-    if (!to || (this.context_id === to)) {
-      return;
-    }
-    if (!this._contexts[to]) {
-      utils.warning("undefined context: " + to);
-      return;
-    }
-    utils.info("context switch: " + from + " -> " + to);
-    if (this.context != null) {
-      if (exit) {
-        this.context.unload();
-      } else {
-        this.context.switched();
-      }
-    }
-    data = this.wrap_context_data(this.context, data);
-    if ((from != null) && !exit) {
-      this._history.push(from);
-    }
-    this.context = this._contexts[to];
-    this.context_id = to;
-    if (exit) {
-      this.context.reload(data);
-    } else {
-      this.context.load(data);
-    }
-    return true;
-  };
-
-  Page.prototype.switch_to = function(to, data) {
-    return this.switch_context(this.context_id, to, data);
-  };
-
-  Page.prototype.switch_back = function(data) {
-    if (this.context != null) {
-      return this.switch_context(this.context_id, this._history.pop(), data, true);
-    }
-  };
-
-  Page.prototype.dispose = function() {
-    this.context = null;
-    this.context_id = null;
-    this._contexts = {};
-    return this._history.clear();
-  };
 
   return Page;
 
-})(pi.Core);
+})(pi.controllers.Base);
 
 pi.app.page = new pi.controllers.Page();
 
@@ -3592,7 +3615,7 @@ pi.Compiler.modifiers.push(function(str) {
 
 
 
-},{"../core":46,"../core/utils/history":51,"./base":32}],39:[function(require,module,exports){
+},{"../core":46,"./base":32}],39:[function(require,module,exports){
 'use strict';
 var pi, utils,
   __slice = [].slice;
@@ -10045,7 +10068,7 @@ utils.extend(pi.Base.prototype, {
   },
   _find_view: function() {
     var comp;
-    comp = this;
+    comp = this.host;
     while (comp) {
       if (comp.is_view === true) {
         return comp;
@@ -10064,7 +10087,7 @@ pi.BaseView = (function(_super) {
 
   BaseView.prototype.is_view = true;
 
-  BaseView.prototype.postinitialize = function() {
+  BaseView.prototype.initialize = function() {
     var controller_klass;
     controller_klass = null;
     if (this.options.controller) {
@@ -10073,9 +10096,18 @@ pi.BaseView = (function(_super) {
     controller_klass || (controller_klass = this.default_controller);
     if (controller_klass != null) {
       this.controller = new controller_klass(this);
-      return pi.app.page.add_context(this.controller, this.options.main);
     } else {
-      return utils.warning("controller not found", controller_klass);
+      utils.warning("controller not found", controller_klass);
+    }
+    return BaseView.__super__.initialize.apply(this, arguments);
+  };
+
+  BaseView.prototype.postinitialize = function() {
+    var host_controller, _view;
+    BaseView.__super__.postinitialize.apply(this, arguments);
+    if (this.controller != null) {
+      host_controller = (_view = this.view()) ? _view.controller : pi.app.page;
+      return host_controller.add_context(this.controller, this.options.main);
     }
   };
 
