@@ -3057,7 +3057,7 @@ pi.controllers.Base = (function(_super) {
     }
   };
 
-  Base.prototype.switch_context = function(from, to, data, exit) {
+  Base.prototype.switch_context = function(from, to, data, exit, switch_hard) {
     var new_context, promise;
     if (data == null) {
       data = {};
@@ -3065,6 +3065,10 @@ pi.controllers.Base = (function(_super) {
     if (exit == null) {
       exit = false;
     }
+    if (switch_hard == null) {
+      switch_hard = false;
+    }
+    switch_hard || (switch_hard = this.always_switch_hard);
     if (from && from !== this.context_id) {
       utils.warning("trying to switch from non-active context");
       return utils.rejected_promise();
@@ -3078,10 +3082,10 @@ pi.controllers.Base = (function(_super) {
     }
     utils.info("context switch: " + from + " -> " + to);
     new_context = this._contexts[to];
-    promise = (this.context != null) && exit && (typeof this.context.preunload === 'function') ? this.context.preunload() : utils.resolved_promise();
+    promise = (this.context != null) && (exit || switch_hard) && (typeof this.context.preunload === 'function') ? this.context.preunload() : utils.resolved_promise();
     return promise.then((function(_this) {
       return function() {
-        if (!exit && (new_context.preload != null) && (typeof new_context.preload === 'function')) {
+        if ((!exit || switch_hard) && (new_context.preload != null) && (typeof new_context.preload === 'function')) {
           return new_context.preload();
         } else {
           return utils.resolved_promise();
@@ -3090,7 +3094,7 @@ pi.controllers.Base = (function(_super) {
     })(this)).then((function(_this) {
       return function() {
         if (_this.context != null) {
-          if (exit) {
+          if (exit || switch_hard) {
             _this.context.unload();
           } else {
             _this.context.switched();
@@ -3102,7 +3106,7 @@ pi.controllers.Base = (function(_super) {
         }
         _this.context = _this._contexts[to];
         _this.context_id = to;
-        if (exit) {
+        if (exit && !switch_hard) {
           return _this.context.reload(data);
         } else {
           return _this.context.load(data);
