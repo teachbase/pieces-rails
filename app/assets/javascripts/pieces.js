@@ -3070,7 +3070,7 @@ pi.controllers.Base = (function(_super) {
       return utils.rejected_promise();
     }
     if (!to || (this.context_id === to)) {
-      return;
+      return utils.rejected_promise();
     }
     if (!this._contexts[to]) {
       utils.warning("undefined context: " + to);
