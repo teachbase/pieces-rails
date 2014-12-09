@@ -10312,7 +10312,7 @@ require('../../components/pieces');
 
 utils = pi.utils;
 
-_finder_rxp = /^(\w+)\.find\((\d+)\)$/;
+_finder_rxp = /^(\w+)\.find\(([tid\_\d]+)\)$/;
 
 _app_rxp = /^app\.([\.\w]+)$/;
 
@@ -10341,7 +10341,7 @@ pi.Base.Restful = (function(_super) {
         } else {
           return reject(res);
         }
-      }) : (matches = rest.match(_finder_rxp)) ? (resources = utils.get_path($r, matches[1]), resources != null ? resources.find(matches[2] | 0) : utils.rejected_promise()) : void 0;
+      }) : (matches = rest.match(_finder_rxp)) ? (resources = utils.get_path($r, matches[1]), resources != null ? resources.find(matches[2]) : utils.rejected_promise()) : void 0;
       promise.then((function(_this) {
         return function(resource) {
           return _this.bind(resource, !_this.target.firstChild);
@@ -10365,13 +10365,17 @@ pi.Base.Restful = (function(_super) {
     }
     this.resource = resource;
     if (!this.resource) {
-      this.target.render(null);
+      this.redraw(null);
       return;
     }
     this.resource.on('update,create', this.resource_update());
     if (render) {
-      return this.target.render(resource);
+      return this.redraw(resource);
     }
+  };
+
+  Restful.prototype.redraw = function(data) {
+    return this.target.render(data);
   };
 
   Restful.prototype.resource_update = function() {
@@ -10384,7 +10388,7 @@ pi.Base.Restful = (function(_super) {
   };
 
   Restful.prototype.on_update = function(data) {
-    return this.target.render(data);
+    return this.redraw(data);
   };
 
   Restful.prototype.dispose = function() {
@@ -10459,7 +10463,7 @@ pi.List.Restful = (function(_super) {
               this.scope[key] = utils.serialize(val);
             }
           } else if (matches[2] === 'find') {
-            el = ref.get(matches[3] | 0);
+            el = ref.get(matches[3]);
             if ((el != null) && typeof el[matches[4]] === 'function') {
               resources = el[matches[4]]();
             }
