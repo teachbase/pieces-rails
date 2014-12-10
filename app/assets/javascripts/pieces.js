@@ -7961,7 +7961,7 @@ pi.List.NestedSelect = (function(_super) {
   };
 
   NestedSelect.prototype.selected = function() {
-    var item, sublist, _i, _len, _ref, _selected;
+    var item, sublist, sublists, _i, _j, _len, _len1, _ref, _ref1, _selected;
     _selected = [];
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -7971,8 +7971,11 @@ pi.List.NestedSelect = (function(_super) {
       }
       if (item instanceof pi.List) {
         _selected = _selected.concat((typeof item.selected === "function" ? item.selected() : void 0) || []);
-      } else if ((sublist = item.find('.pi-list'))) {
-        _selected = _selected.concat((typeof sublist.selected === "function" ? sublist.selected() : void 0) || []);
+      } else if ((sublists = item.find_cut('.pi-list'))) {
+        for (_j = 0, _len1 = sublists.length; _j < _len1; _j++) {
+          sublist = sublists[_j];
+          _selected = _selected.concat(((_ref1 = sublist._nod) != null ? typeof _ref1.selected === "function" ? _ref1.selected() : void 0 : void 0) || []);
+        }
       }
     }
     return _selected;
