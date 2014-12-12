@@ -2217,19 +2217,26 @@ pi.PopupContainer = (function(_super) {
   };
 
   PopupContainer.prototype._unfreeze_layer = function() {
-    var el, _elements, _i, _len, _st;
+    var el, _elements, _fn, _i, _len, _st;
     _st = null;
     _elements = this.has_content() ? [this.overlay, this.cont] : this._base_layer;
+    _fn = (function(_this) {
+      return function(el) {
+        if (el.__freezed__ && el.__freezer__ === _this._popup_id) {
+          delete el.__freezed__;
+          _st = el.__freeze_st__;
+          return el._with_raf('reset_popup_styles', function() {
+            return el.style({
+              overflow: null,
+              top: null
+            });
+          });
+        }
+      };
+    })(this);
     for (_i = 0, _len = _elements.length; _i < _len; _i++) {
       el = _elements[_i];
-      if (el.__freezed__ && el.__freezer__ === this._popup_id) {
-        delete el.__freezed__;
-        _st = el.__freeze_st__;
-        el.style({
-          overflow: null,
-          top: null
-        });
-      }
+      _fn(el);
     }
     if (_st != null) {
       return pi.Nod.win.scrollY(_st);
@@ -4946,11 +4953,11 @@ _fragment = function(html) {
 };
 
 _raf = window.requestAnimationFrame != null ? window.requestAnimationFrame : function(callback) {
-  return callback();
+  return utils.after(0, callback);
 };
 
-_caf = window.cancelAnimationFrame != null ? window.cancelAnimationFrame : function() {
-  return true;
+_caf = window.cancelAnimationFrame != null ? window.cancelAnimationFrame : function(id) {
+  return clearTimeout(id);
 };
 
 pi.Nod = (function(_super) {
