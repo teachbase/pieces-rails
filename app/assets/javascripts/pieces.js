@@ -3321,6 +3321,7 @@ pi.controllers.ListController = (function(_super) {
     return this.query().then((function(_this) {
       return function(data) {
         if (data != null) {
+          _this.view.clear_sort();
           _this.view.reload(_this._parse_response(data));
           _this.view.sorted(params);
         } else {
@@ -8554,6 +8555,15 @@ pi.List.Sortable = (function(_super) {
         return (e.data.type === 'item_added' || e.data.type === 'item_updated') && e.data.item.host === _this.list;
       };
     })(this));
+    this.list.on('update', ((function(_this) {
+      return function(e) {
+        return _this.resort();
+      };
+    })(this)), this, (function(_this) {
+      return function(e) {
+        return (e.data.type === 'load') && e.target === _this.list;
+      };
+    })(this));
     return this;
   };
 
@@ -8585,6 +8595,18 @@ pi.List.Sortable = (function(_super) {
     return this._bisect_sort(item, left, right);
   };
 
+  Sortable.prototype.clear = function() {
+    return this._compare_fun = null;
+  };
+
+  Sortable.prototype.resort = function() {
+    if (!this._compare_fun) {
+      return false;
+    }
+    this.list.items.sort(this._compare_fun);
+    return this.list.data_provider(this.list.items.slice(), true, false);
+  };
+
   Sortable.prototype.sort = function(sort_params) {
     if (sort_params == null) {
       return;
@@ -8595,7 +8617,7 @@ pi.List.Sortable = (function(_super) {
       return utils.keys_compare(a.record, b.record, sort_params);
     };
     this.list.items.sort(this._compare_fun);
-    this.list.data_provider(this.list.items.slice(), false, false);
+    this.list.data_provider(this.list.items.slice(), true, false);
     return this.list.trigger('sort_update', sort_params);
   };
 
@@ -10204,6 +10226,10 @@ pi.BaseView.Listable = (function() {
     return this.list.sort(params);
   };
 
+  Listable.prototype.clear_sort = function() {
+    return this.list.sortable.clear();
+  };
+
   Listable.prototype.sorted = function(params) {
     if (params != null) {
       return this.list.sortable.sorted(params);
@@ -10551,7 +10577,7 @@ pi.List.Restful = (function(_super) {
         this.items_by_id[item.id] = this.list.add_item(item, true);
       }
     }
-    return this.list.update();
+    return this.list.update('load');
   };
 
   Restful.prototype.resource_update = function() {
