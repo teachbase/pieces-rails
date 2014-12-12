@@ -2042,9 +2042,15 @@ pi.PopupContainer = (function(_super) {
 
   PopupContainer.prototype.postinitialize = function() {
     PopupContainer.__super__.postinitialize.apply(this, arguments);
+    this._popup_id = "p_" + (utils.uid());
     this.__overlays__ = [];
     this.__containers__ = [];
     this.__popups__ = [];
+    this._base_layer = this.options.base_layer ? this.options.base_layer.split(/\,\s*/).map(function(selector) {
+      return pi.Nod.root.find(selector);
+    }).filter(function(nod) {
+      return !!nod;
+    }) : [pi.app.view];
     this.z = this.options.z || 300;
     this.show_delay = this.options.show_delay != null ? this.options.show_delay : 200;
     this.hide_delay = this.options.hide_delay != null ? this.options.hide_delay : 500;
@@ -2080,6 +2086,7 @@ pi.PopupContainer = (function(_super) {
     if (options == null) {
       options = {};
     }
+    this._freeze_layer();
     if (this.overlay != null) {
       this.overlay.disable();
     }
@@ -2096,7 +2103,11 @@ pi.PopupContainer = (function(_super) {
     this.target.hide();
     this.cont.append(this.target);
     this.setup_target(this.target);
-    this.show();
+    this._with_raf('popup_show', (function(_this) {
+      return function() {
+        return _this.show();
+      };
+    })(this));
     utils.after(this.show_delay, (function(_this) {
       return function() {
         _this.overlay.show();
@@ -2143,6 +2154,7 @@ pi.PopupContainer = (function(_super) {
     this._closing = true;
     this.target.hide();
     this.overlay.hide();
+    pi.Nod.win.scrollY(0);
     if (this.__overlays__.length === 1) {
       this.opened = false;
       this.trigger('opened', false);
@@ -2170,11 +2182,58 @@ pi.PopupContainer = (function(_super) {
           } else {
             _this.hide();
           }
+          _this._unfreeze_layer();
           _this._closing = false;
           return resolve();
         });
       };
     })(this));
+  };
+
+  PopupContainer.prototype.has_content = function() {
+    return this.__overlays__.length > 0;
+  };
+
+  PopupContainer.prototype._freeze_layer = function() {
+    var el, _elements, _i, _len, _results, _st;
+    _st = pi.Nod.win.scrollTop();
+    _elements = this.has_content() ? [this.overlay, this.cont] : this._base_layer;
+    _results = [];
+    for (_i = 0, _len = _elements.length; _i < _len; _i++) {
+      el = _elements[_i];
+      if (!el.__freezed__) {
+        el.__freezed__ = true;
+        el.__freezer__ = this._popup_id;
+        el.__freeze_st__ = _st;
+        _results.push(el.style({
+          overflow: 'hidden',
+          top: '' + (el.y() - _st) + 'px'
+        }));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  PopupContainer.prototype._unfreeze_layer = function() {
+    var el, _elements, _i, _len, _st;
+    _st = null;
+    _elements = this.has_content() ? [this.overlay, this.cont] : this._base_layer;
+    for (_i = 0, _len = _elements.length; _i < _len; _i++) {
+      el = _elements[_i];
+      if (el.__freezed__ && el.__freezer__ === this._popup_id) {
+        delete el.__freezed__;
+        _st = el.__freeze_st__;
+        el.style({
+          overflow: null,
+          top: null
+        });
+      }
+    }
+    if (_st != null) {
+      return pi.Nod.win.scrollY(_st);
+    }
   };
 
   return PopupContainer;
@@ -5374,7 +5433,7 @@ _prop_hash("data", function(prop, val) {
 
 _prop_hash("style", function(prop, val) {
   if (val === null) {
-    this.node.style[prop] = null;
+    this.node.style.removeProperty(prop);
   } else if (val === void 0) {
     return this.node.style[prop];
   }
