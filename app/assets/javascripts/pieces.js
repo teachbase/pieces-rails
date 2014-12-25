@@ -3449,13 +3449,14 @@ pi.controllers.Paginated = (function() {
 
   Paginated.included = function(base) {
     base.prototype.query = function(_params, next_page) {
-      var params;
+      var params, _scope;
       if (_params == null) {
         _params = {};
       }
       if (next_page == null) {
         next_page = false;
       }
+      _scope = utils.clone(this.scope().params);
       params = utils.merge(this.scope().params, _params);
       if (params.page == null) {
         params.page = this._page = 1;
@@ -3466,6 +3467,7 @@ pi.controllers.Paginated = (function() {
       }
       return this._promise = this._promise.then((function(_this) {
         return function(data) {
+          _this.scope().set(_scope);
           if (_this.scope().is_full) {
             return utils.resolved_promise();
           } else {
