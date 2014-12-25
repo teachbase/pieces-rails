@@ -3634,15 +3634,12 @@ Scope = (function() {
 pi.controllers.Scoped = (function() {
   function Scoped() {}
 
-  Scoped.included = function() {
+  Scoped.included = function(klass) {
+    klass.prototype.scope_whitelist = [];
+    klass.prototype.scope_blacklist = [];
+    klass.prototype.scope_rules = {};
     return true;
   };
-
-  Scoped.prototype.scope_whitelist = [];
-
-  Scoped.prototype.scope_blacklist = [];
-
-  Scoped.prototype.scope_rules = {};
 
   Scoped.prototype.scope = function() {
     return this._scope || (this._scope = new Scope(this.scope_whitelist, this.scope_blacklist, this.scope_rules));
