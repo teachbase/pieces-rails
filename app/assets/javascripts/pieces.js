@@ -3634,6 +3634,12 @@ Scope = (function() {
 pi.controllers.Scoped = (function() {
   function Scoped() {}
 
+  Scoped.rules = {};
+
+  Scoped.whitelist = [];
+
+  Scoped.blacklist = [];
+
   Scoped.included = function(klass) {
     klass.prototype.scope_whitelist = [];
     klass.prototype.scope_blacklist = [];
@@ -3642,7 +3648,7 @@ pi.controllers.Scoped = (function() {
   };
 
   Scoped.prototype.scope = function() {
-    return this._scope || (this._scope = new Scope(this.scope_whitelist, this.scope_blacklist, this.scope_rules));
+    return this._scope || (this._scope = new Scope(utils.uniq(pi.controllers.Scoped.whitelist.concat(this.scope_whitelist)), utils.uniq(pi.controllers.Scoped.whitelist.concat(this.scope_blacklist)), utils.merge(pi.controllers.Scoped.rules, this.scope_rules)));
   };
 
   return Scoped;
