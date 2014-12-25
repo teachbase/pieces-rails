@@ -3310,19 +3310,23 @@ pi.controllers.ListController = (function(_super) {
     return ListController.__super__.initialize.apply(this, arguments);
   };
 
-  ListController.prototype.query = function(params) {
+  ListController.prototype.query = function(params, scope_params) {
     if (params == null) {
       params = {};
     }
-    params = utils.merge(this.scope().params, params);
+    if (scope_params == null) {
+      scope_params = {};
+    }
     if (this._promise == null) {
       this._promise = utils.resolved_promise();
     }
     return this._promise = this._promise.then((function(_this) {
       return function() {
+        _this.scope().set(scope_params);
         if (_this.scope().is_full) {
           return utils.resolved_promise();
         } else {
+          params = utils.merge(_this.scope().params, params);
           return _this._resource_query(params);
         }
       };
@@ -3349,8 +3353,7 @@ pi.controllers.ListController = (function(_super) {
   };
 
   ListController.prototype.index = function(params) {
-    this.scope().set(params);
-    return this.query().then((function(_this) {
+    return this.query({}, params).then((function(_this) {
       return function(data) {
         _this.view.load(_this._parse_response(data));
         return data;
@@ -3359,10 +3362,9 @@ pi.controllers.ListController = (function(_super) {
   };
 
   ListController.prototype.search = function(q) {
-    this.scope().set({
+    return this.query({}, {
       q: q
-    });
-    return this.query().then((function(_this) {
+    }).then((function(_this) {
       return function(data) {
         if (data != null) {
           _this.view.reload(_this._parse_response(data));
@@ -3383,8 +3385,7 @@ pi.controllers.ListController = (function(_super) {
     sort_params = {
       sort: params
     };
-    this.scope().set(sort_params);
-    return this.query().then((function(_this) {
+    return this.query({}, sort_params).then((function(_this) {
       return function(data) {
         if (data != null) {
           _this.view.clear_sort();
@@ -3406,8 +3407,7 @@ pi.controllers.ListController = (function(_super) {
     filter_params = {
       filter: params
     };
-    this.scope().set(filter_params);
-    return this.query().then((function(_this) {
+    return this.query({}, filter_params).then((function(_this) {
       return function(data) {
         if (data != null) {
           _this.view.reload(_this._parse_response(data));
@@ -3448,29 +3448,31 @@ pi.controllers.Paginated = (function() {
   function Paginated() {}
 
   Paginated.included = function(base) {
-    base.prototype.query = function(_params, next_page) {
-      var params, _scope;
+    base.prototype.query = function(_params, scope_params, next_page) {
       if (_params == null) {
         _params = {};
+      }
+      if (scope_params == null) {
+        scope_params = {};
       }
       if (next_page == null) {
         next_page = false;
       }
-      _scope = utils.clone(this.scope().params);
-      params = utils.merge(this.scope().params, _params);
-      if (params.page == null) {
-        params.page = this._page = 1;
+      if (_params.page == null) {
+        _params.page = this._page = 1;
       }
-      params.per_page = this.per_page;
+      _params.per_page = this.per_page;
       if (this._promise == null) {
         this._promise = utils.resolved_promise();
       }
       return this._promise = this._promise.then((function(_this) {
         return function(data) {
-          _this.scope().set(_scope);
+          var params;
+          _this.scope().set(scope_params);
           if (_this.scope().is_full) {
             return utils.resolved_promise();
           } else {
+            params = utils.merge(_this.scope().params, _params);
             return _this._resource_query(params).then(function(data) {
               _this.page_resolver(data);
               return data;
@@ -3498,7 +3500,7 @@ pi.controllers.Paginated = (function() {
     this._page = (this._page || 0) + 1;
     return this.query({
       page: this._page
-    }, true).then(((function(_this) {
+    }, {}, true).then(((function(_this) {
       return function(data) {
         if (data != null) {
           _this.view.load(_this._parse_response(data));
