@@ -1997,7 +1997,8 @@ utils.extend(Nod.prototype, {
 
 Nod.root.ready(function() {
   return Nod.root.listen('a', 'click', function(e) {
-    if (e.target.attr("href")[0] === "@") {
+    var _ref;
+    if (((_ref = e.target.attr("href")) != null ? _ref[0] : void 0) === "@") {
       e.cancel();
       utils.debug("handle pi click: " + (e.target.attr("href")));
       e.target.pi_call(e.target, e.target.attr("href"));
