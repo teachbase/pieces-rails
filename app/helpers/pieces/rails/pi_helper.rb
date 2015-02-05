@@ -33,7 +33,7 @@ module Pieces
         merge_class! options,'pi-search-field pi'
         content_tag(:div, nil, options) do
           concat content_tag(:i, nil, {:class => 'pi reset-btn fa fa-times', "data-on-click" => "@host.reset"})
-          concat text_field_tag(name,nil,class: 'text-input', placeholder: placeholder)
+          concat text_field_tag(name,nil, class: "text-input", placeholder: placeholder)
         end
       end
 

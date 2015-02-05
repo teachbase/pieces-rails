@@ -2383,6 +2383,7 @@ pi.RadioGroup = (function(_super) {
         }
       });
       if (ref.length) {
+        this.input.value(val);
         return this.select_item(ref[0]);
       }
     } else {
@@ -8150,7 +8151,8 @@ pi.List.ScrollEnd = (function(_super) {
 'use strict';
 var pi, utils, _clear_mark_regexp, _is_continuation, _selector_regexp,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
 pi = require('../../core');
 
@@ -8258,7 +8260,7 @@ pi.List.Searchable = (function(_super) {
   };
 
   Searchable.prototype.stop_search = function(rollback) {
-    var items;
+    var items, _ref;
     if (rollback == null) {
       rollback = true;
     }
@@ -8268,7 +8270,8 @@ pi.List.Searchable = (function(_super) {
     this.searching = false;
     this.list.removeClass('is-searching');
     items = this.all_items();
-    this.clear_highlight(items);
+    _ref = this.clear_highlight(items), __indexOf.call(this.__highlighted__, _ref) >= 0;
+    this.__highlighted__ = false;
     if (rollback) {
       this.list.data_provider(items, false, false);
     }
@@ -8312,6 +8315,7 @@ pi.List.Searchable = (function(_super) {
   Searchable.prototype.highlight = function(q) {
     var item, _i, _len, _ref;
     this._prevq = q;
+    this.__highlighted__ = true;
     _ref = this.list.items;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
