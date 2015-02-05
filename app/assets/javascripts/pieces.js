@@ -8151,8 +8151,7 @@ pi.List.ScrollEnd = (function(_super) {
 'use strict';
 var pi, utils, _clear_mark_regexp, _is_continuation, _selector_regexp,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-  __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 pi = require('../../core');
 
@@ -8260,7 +8259,7 @@ pi.List.Searchable = (function(_super) {
   };
 
   Searchable.prototype.stop_search = function(rollback) {
-    var items, _ref;
+    var items;
     if (rollback == null) {
       rollback = true;
     }
@@ -8270,7 +8269,9 @@ pi.List.Searchable = (function(_super) {
     this.searching = false;
     this.list.removeClass('is-searching');
     items = this.all_items();
-    _ref = this.clear_highlight(items), __indexOf.call(this.__highlighted__, _ref) >= 0;
+    if (this.__highlighted__) {
+      this.clear_highlight(items);
+    }
     this.__highlighted__ = false;
     if (rollback) {
       this.list.data_provider(items, false, false);
