@@ -785,7 +785,7 @@ pi.Checkbox = (function(_super) {
     if (silent == null) {
       silent = false;
     }
-    this.value(false);
+    this.value(this.options.default_value == this._true_val);
     if (!silent) {
       return this.trigger(pi.InputEvent.Clear);
     }
