@@ -6926,6 +6926,8 @@ pi.Net = (function() {
 
   Net.use_json = true;
 
+  Net.method_override = false;
+
   Net.headers = [];
 
   Net.request = function(method, url, data, options, xhr) {
@@ -6950,6 +6952,11 @@ pi.Net = (function() {
           }
           data = null;
         } else {
+          if (_this.method_override === true) {
+            data._method = method;
+            _headers['X-HTTP-Method-Override'] = method;
+            method = 'POST';
+          }
           if (use_json) {
             _headers['Content-Type'] = 'application/json';
             if (data != null) {
