@@ -15,7 +15,7 @@ module Pieces
         merge_class! list_options, 'pi is-hidden list-container pi-select-list'
         options.delete :dropdown
         content_tag(:div, nil, options) do
-          concat hidden_field_tag(nil,val)
+          concat hidden_field_tag(options[:hidden_name], val)
           concat content_tag(:div, placeholder, class: 'pi placeholder', pid: "placeholder", data:{placeholder: placeholder})
           concat(
             content_tag(:div, nil, list_options) do
