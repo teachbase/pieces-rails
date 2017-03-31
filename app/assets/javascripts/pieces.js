@@ -5766,7 +5766,7 @@ pi.utils = (function() {
 
   utils.uniq_id = 100;
 
-  utils.email_rxp = /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}\b/i;
+  utils.email_rxp = /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i;
 
   utils.digital_rxp = /^[\d\s-\(\)]+$/;
 
