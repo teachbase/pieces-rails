@@ -1,11 +1,11 @@
 module Pieces
   module Rails
     def self.install_to_slim!
-      shortcut = Slim::Parser.default_options[:shortcut]
-      shortcut['@']  = { attr: 'data-pid'}
-      shortcut['@@'] = { attr: 'data-component'}
-      Slim::Engine.default_options[:merge_attrs]['data-pid']  = ' '
-      Slim::Engine.default_options[:merge_attrs]['data-component'] = ' '
+      Slim::Parser.options[:shortcut].merge!(
+        '@'  => { attr: 'data-pid' },
+        '@@' => { attr: 'data-component' }
+      )
+      Slim::Engine.options[:merge_attrs].merge!('data-pid' => ' ', 'data-component' => ' ')
     end
 
     class Railtie < ::Rails::Railtie
